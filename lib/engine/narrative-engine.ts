@@ -21,6 +21,8 @@ function freezeContext<T>(value: T): T {
   return value;
 }
 
+
+const MISSED_ROUNDS_BEFORE_PASSING = 3;
 export function startSession(pack: StoryPack, agent: NarrativeAgent = mockAgent, timeoutMs = 30_000): NarrativeEngine {
   return new NarrativeEngine(pack, agent, timeoutMs);
 }
@@ -35,6 +37,9 @@ export class NarrativeEngine {
   #lastDanmaku = 0;
   #openEventIds: string[] = [];
   #sentFirstInterventionLine = false;
+  // Intervention moments the player let pass; the protagonist then carries on by himself.
+  #passedEventIds = new Set<string>();
+  #missedRounds = 0;
   #processing = false;
   #queueVersion = 0;
   #receipts = new Map<string, Danmaku>();
@@ -93,7 +98,8 @@ export class NarrativeEngine {
 
   #openWindow(): boolean {
     if (this.#openEventIds.length) return false;
-    this.#openEventIds = availableInterventionEvents(this.#pack, this.#state).map(({ id }) => id);
+    this.#openEventIds = availableInterventionEvents(this.#pack, this.#state)
+      .map(({ id }) => id).filter(id => !this.#passedEventIds.has(id));
     if (!this.#openEventIds.length) return false;
     this.#timeline.append({
       type: "intervention_opened", source: "ai_system", content: { eventIds: this.#openEventIds },
@@ -116,7 +122,11 @@ export class NarrativeEngine {
     if (this.#openEventIds.length) return { status: "waiting_for_player" as const };
 
     const state = this.#state;
-    const candidates = availableEvents(this.#pack, state, "autonomous");
+    // Intervention moments the player let pass become things he may now decide to do himself.
+    const passed = availableInterventionEvents(this.#pack, state)
+      .filter(({ id }) => this.#passedEventIds.has(id))
+      .map(event => ({ ...event, trigger: "autonomous" as const, result: event.description }));
+    const candidates = [...availableEvents(this.#pack, state, "autonomous"), ...passed];
     const scene = this.#pack.scenes.find(({ id }) => id === state.currentSceneId)!;
     if (!candidates.length) {
       const exit = scene.transitions.find(({ requiresClueIds, afterEventId }) => afterEvent(this.#state, afterEventId) &&
@@ -406,6 +416,13 @@ export class NarrativeEngine {
       content: { turn: draft.turn, trust: draft.trust, memoriesAdded: output.memories.length },
     });
     for (const entry of entries) this.#timeline.append(entry);
+    // After three rounds in which none of the player's suggestions led to an action, the moment
+    // passes: the window stops reopening and the protagonist chooses one of those actions himself.
+    this.#missedRounds = validatedEvents.length ? 0 : this.#missedRounds + 1;
+    if (this.#missedRounds >= MISSED_ROUNDS_BEFORE_PASSING) {
+      for (const id of this.#openEventIds) this.#passedEventIds.add(id);
+      this.#missedRounds = 0;
+    }
     this.#closeWindow();
     this.#finishStep(stepEntries);
   }

@@ -49,7 +49,8 @@ test("Reader starts, investigates, waits for input, resumes and ends through the
   assert.deepEqual(await step(waiting), waiting);
 
   const submit = (text: string) => send({ action: "danmaku", id: start.id, requestId: randomUUID(), text });
-  for (const [text, decision] of [["看看", "question"], ["一定有人", "reject"], ["便签也许有关", "infer"]]) {
+  // Two unproductive rounds keep the moment open; a third would let it pass (tested below).
+  for (const [text, decision] of [["看看", "question"], ["一定有人", "reject"]]) {
     const response = await submit(text);
     assert.ok(response.entries.some(entry => entry.type === "narrative_block" &&
       entry.content.kind === "decision" && entry.content.decision === decision));
@@ -89,4 +90,18 @@ test("Messages queued before the autonomous step are consumed by the engine in F
   const decisions = decided.entries.flatMap(entry => entry.type === "narrative_block" &&
     entry.content.kind === "decision" ? [entry.content.decision] : []);
   assert.deepEqual(decisions, ["question", "accept"]);
+});
+
+test("After three suggestions that lead nowhere, the protagonist acts on his own", async () => {
+  const start = await send({ action: "start" });
+  const waiting = await step(start);
+  assert.equal(waiting.mode, "waiting_for_player");
+  const submit = (text: string) => send({ action: "danmaku", id: start.id, requestId: randomUUID(), text });
+  let view = waiting;
+  for (const text of ["看看", "一定有人", "便签也许有关"]) {
+    view = await submit(text);
+    view = await step(view);
+  }
+  assert.notEqual(view.mode, "waiting_for_player");
+  assert.ok(view.entries.some(entry => entry.type === "autonomous_action_executed"));
 });

@@ -27,6 +27,34 @@ type ReaderSession = {
 const sessions = new Map<string, ReaderSession>();
 const sessionLifetime = 60 * 60 * 1000;
 
+const actionReplies: Record<string, string> = {
+  e002: "我再查一下柜子，看看有没有漏掉的原始记录。",
+  e004: "我先核对手机里收到的目录。",
+  e007: "我去门边听一下。你帮我看着外面。",
+  "leave-now": "好，我把文件收好，从档案室出去。",
+  e009: "我从办公室绕过去，文件袋不会放下。",
+  e011: "好，我走楼梯去二楼。帮我盯着他。",
+  e012: "我先躲进储物间，等手电移开。",
+  e024: "我看看他们私下怎么讨论这份报告。",
+  e025: "我把正式报告和眼前这份原始记录对一下。",
+  e027: "好，我让屏幕回到待机，再往后退。",
+  e028: "我先留在隔断后面，看看门边的动静。",
+  e031: "我问他在那份报告上签了什么。",
+  e032: "他挡着走廊。我先等他的手电移开，再找机会撤。",
+  e040: "我不想再让他拿走这些东西。",
+  e041: "好，我先退开，带着资料找出口。",
+  e053: "我先听他的条件，文件袋留在我手上。",
+  e054: "材料先留在我手上。我不会把它们交给他。",
+  e055: "我先核对他拿来的文件，看能不能对上。",
+  e058: "好，我去值班室，请里面的人过来作证。",
+  e061: "我把文件袋攥紧，先看他要做什么。",
+  e063: "他还在逼过来。我知道这一步意味着什么。",
+  e066: "我会按刚才谈的，把约定的材料交给他。",
+};
+
+const retreatAdvice = /撤离|撤退|快走|后退|退开|绕开|拉开.{0,3}距离|安全通道|别.{0,6}(?:拔刀|动手|对峙)|把刀.{0,4}(?:放下|收起来)/u;
+const attackAdvice = /主动.{0,10}(?:发起攻击|出手)|^(?:直接|现在)?(?:攻击|袭击|动手)/u;
+
 // Scripted model output for this pack. Engine validation still governs every action and clue.
 const registry = new ProviderRegistry();
 registry.register(createMockProvider("reader-mock", true, ({ messages }) => {
@@ -51,19 +79,27 @@ registry.register(createMockProvider("reader-mock", true, ({ messages }) => {
       if (reaction(text) !== undefined) {
         return { danmakuId, decision: "defer", reason: "这句话触及白针，但没有提出现场调查。" };
       }
-      // Match short phrases against currently legal actions in the offline provider.
+      if (proposedEvents.length) return { danmakuId, decision: "defer", reason: "等我先处理眼前这件事。" };
+      // Players naturally ask to leave before the exit opens. Acknowledge the request
+      // through the currently legal action that gets the character closer to leaving.
+      const retreat = scene.id === "s04" && retreatAdvice.test(text) && !attackAdvice.test(text)
+        ? availableActions.find(option => option.id === "e041" || option.id === "e032")
+        : undefined;
       const terms = Array.from({ length: text.length - 1 }, (_, i) => text.slice(i, i + 2));
       const ranked = availableActions.map(option => ({
         option, score: terms.filter(term => option.description.includes(term)).length,
       })).sort((left, right) => right.score - left.score);
-      const match = ranked[0];
-      if (!match?.score) return { danmakuId, decision: "question", reason: "你建议我具体做什么？" };
-      if (proposedEvents.length) return { danmakuId, decision: "defer", reason: "等我先处理眼前这件事。" };
-      proposedEvents.push({ storyEventId: match.option.id, danmakuId });
-      return { danmakuId, decision: "accept", reason: "我先试着按这个方向做。" };
+      const match = retreat ?? (ranked[0]?.score ? ranked[0].option : undefined);
+      if (!match) return { danmakuId, decision: "question", reason: "你建议我具体做什么？" };
+      proposedEvents.push({ storyEventId: match.id, danmakuId });
+      return { danmakuId, decision: "accept", reason: "这个建议对应当前可做的行动。" };
     });
+    const accepted = proposedEvents[0]?.storyEventId;
+    const clarification = scene.id === "s04"
+      ? "他还在走廊上。你是要我跟他谈，还是帮我找撤离的机会？"
+      : "你说的是哪条线索？再告诉我一点。";
     return JSON.stringify({
-      narration: proposedEvents.length ? "我先去看看。" : reply ?? "你说，我先去哪儿找？",
+      narration: accepted ? actionReplies[accepted] ?? "好，我按你说的试一下。" : reply ?? clarification,
       ...(!proposedEvents.length && reply && { delivery: "hesitant" as const }),
       danmakuDecisions, proposedEvents, nextStep: { kind: "stay" }, memories: [], trustDelta: 0,
     } satisfies AgentTurnOutput);

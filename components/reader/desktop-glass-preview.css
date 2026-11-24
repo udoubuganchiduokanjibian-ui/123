@@ -1,0 +1,493 @@
+.os-glass-preview {
+  background: #173c64;
+  font: 14px/1.5 Consolas, "Microsoft YaHei", monospace;
+}
+
+.os-glass-preview .os-wall {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 93% 14%, #60c8d25c, transparent 57%),
+    radial-gradient(ellipse at 55% 108%, #78d6cb, #59b9c396 35%, transparent 68%),
+    linear-gradient(158deg, #183767 5%, #215493 48%, #3897aa 100%);
+}
+
+.desktop-ribbons {
+  position: absolute;
+  inset: -8px;
+  filter: blur(clamp(4px, .7vw, 10px));
+  pointer-events: none;
+}
+.desktop-ribbons::before,
+.desktop-ribbons::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.desktop-ribbons::before {
+  background:
+    linear-gradient(119deg, #b5f5f887 2%, #69c9ee38 31%, transparent 62%),
+    linear-gradient(152deg, #8cd9ef55, transparent 37%);
+  clip-path: polygon(0 44%, 8% 35%, 19% 25%, 32% 15%, 47% 7%, 65% 0,
+    97% 0, 74% 6%, 54% 13%, 37% 22%, 23% 33%, 12% 44%, 5% 56%, 0 68%);
+}
+
+.desktop-ribbons::after {
+  background:
+    linear-gradient(113deg, #b4f3f889 3%, #64bfe654 21%, transparent 48%),
+    linear-gradient(164deg, #9dbcf94d, transparent 33%);
+  clip-path: polygon(0 63%, 5% 48%, 12% 34%, 20% 22%, 31% 10%, 43% 0,
+    60% 0, 45% 9%, 32% 20%, 21% 32%, 12% 45%, 5% 60%, 0 75%);
+}
+
+.os-glass-preview .desktop-brand { display: none; }
+.os-glass-preview .shortcuts { right: 12px; top: 20px; gap: 12px; }
+.os-glass-preview .shortcuts button {
+  width: 80px;
+  border-radius: 4px;
+  padding: 6px 0;
+  font: 13px/1.5 Tahoma, "Microsoft YaHei", sans-serif;
+  text-shadow: 0 1px 2px #0a2545, 0 1px 4px #0a2545;
+}
+.os-glass-preview .shortcuts button:hover { background: #bbe7ff29; }
+.os-glass-preview .shortcuts button:focus-visible {
+  outline: 2px solid #78b4eb;
+  outline-offset: 1px;
+}
+.os-glass-preview .icon-frame {
+  width: 44px;
+  height: 41px;
+  margin-bottom: 5px;
+  background:
+    radial-gradient(ellipse 64% 56% at 32% 3%, #fff 0%, #f3fbff 24%, #d7f0ff80 60%, transparent 94%),
+    linear-gradient(#c4e3f6 0%, #90c1e4 39%, #5186b2 51%, #78b2db 82%, #b4dcf3);
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 2px 4px #102b65a3, inset 0 -2px 3px #28587e45;
+}
+.os-glass-preview .icon-frame svg { width: 28px; height: 28px; stroke-width: 1.6; filter: drop-shadow(0 1px 1px #0c365d); }
+.os-glass-preview .os-taskbar {
+  z-index: 12;
+  padding: 0 12px;
+  border-top: 1px solid #b0e3f5a6;
+  background: linear-gradient(#4887ae 0%, #30628e 44%, #224c77 45%, #285d82 100%);
+  color: #f0faff;
+  box-shadow: 0 -1px 5px #13335255;
+}
+.os-glass-preview .taskbar-tray { border: 0; padding: 0; gap: 12px; }
+.os-glass-preview .taskbar-windows {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.taskbar-launchers { display: flex; flex: none; align-items: center; gap: 4px; }
+.taskbar-static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 26px;
+  height: 25px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: #e1f2ff;
+  cursor: default;
+  user-select: none;
+}
+.taskbar-static:hover { background-color: #bfe5ff24; }
+.taskbar-computer {
+  background: linear-gradient(180deg, #a8d9fa70 0%, #5296c16b 44%, #153b61a6 50%, #387fae80 100%);
+  box-shadow: inset 0 1px #ccecff60, 0 1px #132f50;
+}
+.desktop-clock { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.os-glass-preview .os-taskbar :is(.taskbar-windows > button, .taskbar-tray > button, .taskbar-launchers > button, .desktop-clock-wrap > button) {
+  border: 1px solid #a7d6eb88;
+  border-radius: 3px;
+  background: #bce8ff24;
+  color: inherit;
+}
+.os-glass-preview .os-taskbar button.taskbar-action {
+  border-color: transparent;
+  background: transparent;
+  color: #f0faff;
+}
+.os-glass-preview .os-taskbar button.taskbar-action:is(:enabled:hover, :focus-visible, [aria-expanded="true"]) {
+  border-color: #b9e1f68c;
+  background: #bce8ff24;
+}
+.os-glass-preview .os-taskbar button.taskbar-action:focus-visible {
+  outline: 1px solid #d6f0ff;
+  outline-offset: 1px;
+}
+.desktop-volume {
+  position: absolute;
+  z-index: 1;
+  right: 8px;
+  bottom: calc(100% + 5px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(226px, calc(100vw - 16px));
+  padding: 10px;
+  border: 1px solid #a1cbe26b;
+  border-radius: 6px;
+  background: linear-gradient(#456988, #213b55);
+  box-shadow: 0 4px 12px #122a45a0;
+}
+.desktop-volume input {
+  flex: 1;
+  min-width: 0;
+  accent-color: #bfe8ff;
+}
+.desktop-volume input:focus-visible { outline: 1px solid #d6f0ff; outline-offset: 3px; }
+.desktop-volume output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+.os-glass-preview .taskbar-browser:enabled { cursor: pointer; }
+.desktop-countdown {
+  position: absolute;
+  right: 9px;
+  bottom: calc(100% + 5px);
+  width: min(205px, calc(100vw - 18px));
+  color: #e2f0fc;
+  background: #152a42;
+}
+.desktop-countdown .window-controls button { display: grid; min-height: 24px; padding: 0; }
+.desktop-countdown-time {
+  padding: 14px 12px;
+  font: 600 26px/1.1 Consolas, monospace;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.desktop-browser.utility { width: min(590px, calc(100% - 40px)); }
+.desktop-browser.utility[data-night-app="browser"]:not(.is-maximized) {
+  width: min(850px, calc(100% - 24px));
+  height: min(620px, 75dvh);
+  left: clamp(12px, calc((100% - 850px) / 2), 170px);
+  top: 10%;
+}
+.desktop-browser-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  color: #20252b;
+  font: 14px/1.5 Arial, "Microsoft YaHei", sans-serif;
+}
+.desktop-browser-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; color: #39516b; background: #dce6ef;
+  border-bottom: 1px solid #a4b7ca;
+}
+.desktop-browser-address {
+  flex: 1; min-width: 0; padding: 3px 8px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  border: 1px solid #a9b8c7; border-radius: 4px; background: #fff;
+}
+.desktop-browser-error { flex: 1; min-height: 0; padding: 26px 24px 38px; overflow: auto; }
+.desktop-browser.has-opening-news:not(.is-maximized) {
+  top: clamp(42px, 9dvh, 108px);
+  left: max(12px, calc((100% - 810px) / 2));
+  width: min(730px, calc(100% - 24px));
+  max-height: min(82dvh, calc(100dvh - var(--taskbar-height) - 54px));
+}
+.opening-news-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  color: #202626;
+  background: #f7f6f2;
+}
+.opening-news-masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 13px clamp(16px, 5vw, 38px);
+  border-bottom: 1px solid #b4bfc1;
+  color: #183b50;
+  background: #efeee8;
+}
+.opening-news-masthead strong {
+  font: 700 23px/1.25 "Songti SC", SimSun, serif;
+  letter-spacing: .12em;
+}
+.opening-news-masthead span { font-size: 12px; }
+.opening-news-article {
+  max-width: 73ch;
+  margin: auto;
+  padding: clamp(18px, 4vw, 34px) clamp(16px, 5vw, 38px) 32px;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.opening-news-article h1 {
+  margin: 5px 0 12px;
+  font: 700 clamp(24px, 3.5vw, 36px)/1.3 "Songti SC", SimSun, serif;
+}
+.opening-news-article p { margin: 0 0 12px; }
+.opening-news-article p:last-child { margin-bottom: 0; }
+.opening-news-byline { color: #4c606c; font-size: 12px; }
+.opening-news-lead { color: #294658; font-weight: 600; }
+@media (max-width: 650px) {
+  .desktop-browser.has-opening-news:not(.is-maximized) {
+    top: 63px;
+    max-height: calc(100dvh - var(--taskbar-height) - 75px);
+  }
+}
+.desktop-browser .desktop-browser-error h2 {
+  margin: 0 0 12px; font: bold 30px/1.2 Georgia, serif;
+}
+.desktop-browser-error hr { border: 0; border-top: 1px solid #dadfe5; margin: 16px 0 10px; }
+.desktop-browser-error code { color: #516272; }
+
+.os-glass-preview .os-window {
+  border-color: #547da7;
+  border-radius: 9px 9px 4px 4px;
+  outline: 1px solid #17304f;
+  box-shadow: 0 4px 12px #142f5260;
+}
+.os-glass-preview .window-bar {
+  background: linear-gradient(#6294c1 0%, #426e9f 47%, #2b527f 50%, #315d8a 100%);
+  box-shadow: inset 0 1px #b9d6ee9e, inset 0 -1px #17375c;
+  padding-right: 4px;
+  text-shadow: 0 1px #193c64;
+}
+.os-glass-preview .os-monitor {
+  border: 0;
+  outline: none;
+  background: #172435;
+  box-shadow: 0 10px 26px #0a1e3b63;
+}
+.os-glass-preview .os-monitor .window-bar {
+  background: linear-gradient(#487198, #315477 52%, #284567 54%, #294a6d);
+  box-shadow: inset 0 -7px 13px #142d4540;
+}
+.os-glass-preview .window-controls { align-items: center; gap: 3px; }
+.os-glass-preview .window-controls button {
+  height: 24px;
+  color: #153657;
+  border: 0;
+  border-radius: 5px;
+  background: linear-gradient(#afd1ee, #8cb9df 45%, #709ec9 51%, #a1c5e4);
+  box-shadow: inset 0 -1px 2px #335e854d, 0 1px 2px #1c395e;
+}
+.os-glass-preview .window-controls button:hover {
+  background: linear-gradient(#bcdcf4, #9bc4e7 45%, #7fafd5 51%, #afd3ed);
+}
+.os-glass-preview .window-controls button:active { box-shadow: inset 0 1px 3px #1c395e80; }
+.os-glass-preview .mail-row,
+.os-glass-preview .assist-decline {
+  border: 1px solid #9baec4;
+  border-radius: 5px;
+  background: linear-gradient(#e3eaf2, #cad8e7 46%, #bacbdf 50%, #d1dfed);
+}
+.os-glass-preview .mail-row:hover,
+.os-glass-preview .assist-decline:hover { filter: brightness(1.06); }
+.os-glass-preview .assist {
+  border: 1px solid #284569;
+  border-radius: 5px;
+  background: linear-gradient(#5076a1, #365e8d 47%, #254875 50%, #345d8b);
+}
+.os-glass-preview .assist:hover { filter: brightness(1.12); }
+
+.os-glass-preview .reader {
+  --background: #14171b;
+  --surface: #1c2128;
+  --line: #414b58;
+  --text: #e1ecf7;
+  --muted: #a2afbd;
+  --signal: #9fd5fa;
+  --evidence: #c1dbef;
+  --fault: #ffc1b9;
+  background: var(--background);
+}
+.os-glass-preview .reader-layout::before { content: none; }
+@media (min-width: 601px) {
+  .os-glass-preview .reader-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(214px, 32%);
+  }
+  .os-glass-preview .reader-scene-panel { gap: 8px; }
+}
+.os-glass-preview .reader .reader-log-terminal {
+  --line: #353e49;
+  background: #191e24;
+}
+.os-glass-preview .reader .reader-log-terminal .reader-tabs { background: #242a32; }
+.os-glass-preview .reader .reader-log-terminal .reader-tabs button[aria-selected="true"] {
+  color: #c6e6ff;
+  background: #191e24;
+  border-bottom-width: 1px;
+}
+.os-glass-preview .reader-device,
+.os-glass-preview .reader .reader-log-terminal {
+  border: 1px solid #a8c9e130;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.os-glass-preview .reader-tv {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.os-glass-preview .reader-camera-device .reader-panel-head,
+.os-glass-preview .reader-camera-device .reader-meta { color: #e4edf7; }
+.os-glass-preview .reader-tv::before,
+.os-glass-preview .reader-tv::after { content: none; }
+.os-glass-preview .reader-tv-screen {
+  padding: 0;
+  border-radius: 0;
+  background: #0a111a;
+  box-shadow: none;
+}
+.os-glass-preview .reader-tv-screen .reader-feed {
+  border: 0;
+  border-radius: 0;
+  background: #0b1017;
+  box-shadow: none;
+}
+.os-glass-preview .reader-tv-screen .reader-crt::before { background: none; }
+.os-glass-preview :is(.reader-tv-glass, .reader-tv-panel) { display: none; }
+.os-glass-preview .camera-image { filter: hue-rotate(104deg) saturate(.8); }
+.os-glass-preview .reader-feed-label > * { background: #0c1b2bd9; }
+.os-glass-preview .cam-caption,
+.os-glass-preview .cam-location { color: #d5e6f6; text-shadow: 2px 2px #142538; }
+.os-glass-preview .reader-terminal::before,
+.os-glass-preview .reader-terminal.is-open::before {
+  inset: 0;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(151deg, #252c36, #1c2129 57%);
+  box-shadow: none;
+  animation: none;
+}
+.os-glass-preview .reader-chat .is-them p {
+  background: #2a3542;
+  border: 0;
+}
+.os-glass-preview .reader-chat .is-system p { border: 0; }
+.os-glass-preview .reader :is(.reader-danmaku-log, .reader-log-terminal .reader-scroll) {
+  scrollbar-color: #e2edf8 transparent;
+  scrollbar-width: thin;
+}
+.os-glass-preview .reader-form { border-top-color: #a8c9e130; }
+.os-glass-preview .reader .reader-form button { border: 1px solid #a8c9e13a; }
+.os-glass-preview .reader-form input,
+.os-glass-preview .reader-form.is-open input {
+  border: 0;
+  border-radius: 6px;
+  background: #141920;
+  box-shadow: inset 0 3px 8px #0d1a2a99;
+}
+.os-glass-preview .reader :is(button, input):focus-visible {
+  outline: 2px solid #78b0da;
+  outline-offset: 1px;
+  box-shadow: none;
+}
+.os-glass-preview .camera-bubble {
+  --bubble-bottom: #bdd5e8;
+  color: #18334b;
+  background: linear-gradient(#e2eef8, var(--bubble-bottom));
+  border: 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px #0b182b50;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.os-glass-preview .camera-bubble::after { border-top-color: var(--bubble-bottom); }
+
+.os-glass-preview .os-monitor.is-maximized .reader {
+  padding: clamp(6px, 1vw, 18px);
+}
+.os-glass-preview .os-monitor.is-maximized .reader-layout {
+  --panel-gap: clamp(8px, 0.95vw, 18px);
+  width: 100%;
+  gap: var(--panel-gap);
+}
+.os-glass-preview .os-monitor.is-maximized .reader-layout::before { content: none; }
+.os-glass-preview .os-monitor.is-maximized .reader-feed canvas {
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+}
+.os-glass-preview .os-monitor.is-maximized .reader-chat li { max-width: min(86%, 54ch); }
+
+@media (min-width: 901px) {
+  .os-glass-preview .os-monitor.is-maximized .reader-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 29%);
+  }
+  .os-glass-preview .os-monitor.is-maximized .reader-scene-panel {
+    display: grid;
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--panel-gap);
+  }
+}
+
+@media (max-width: 600px) {
+  .os-glass-preview .os-monitor.is-maximized .reader { overflow-y: auto; }
+  .os-glass-preview .os-monitor.is-maximized .reader-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(255px, 1.2fr) minmax(180px, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .os-glass-preview .shortcuts { right: 4px; top: 1px; gap: 0; }
+  .os-glass-preview .shortcuts button { width: 68px; padding: 1px; font-size: 12px; }
+  .os-glass-preview .icon-frame { width: 32px; height: 29px; }
+  .os-glass-preview .icon-frame svg { width: 20px; height: 20px; }
+  .os-glass-preview .os-taskbar { padding-inline: 5px; }
+  .os-glass-preview .taskbar-tray { gap: 5px; }
+  .taskbar-launchers { gap: 2px; }
+  .taskbar-static { min-width: 22px; padding-inline: 3px; }
+}
+@media (max-width: 430px) {
+  .taskbar-launchers .taskbar-static:last-child { display: none; }
+  .os-glass-preview .taskbar-tray { font-size: 11px; }
+}
+
+.archive-runner { margin-top: 25px; max-width: 600px; color: #263f4a; }
+.archive-runner-heading, .archive-runner-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+.archive-runner canvas { display: block; width: 100%; image-rendering: pixelated; border-radius: 4px; }
+.archive-runner-controls button {
+  padding: 4px 12px;
+  border: 1px solid #9eb6bf;
+  border-radius: 4px;
+  background: #ebf3f5;
+  color: #213d49;
+  cursor: pointer;
+}
+.os-glass-preview .taskbar-windows button[aria-pressed="true"] {
+  border-color: #b9e1f6a0;
+  background: #bce8ff3d;
+}
+
+.os-glass-preview .os-monitor .reader-layout { column-gap: 0; }
+.os-glass-preview .reader-layout .reader-log-terminal {
+  border-inline-end: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.os-glass-preview .reader-device.reader-terminal {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-inline-color: #a8c9e130;
+  padding-inline: 0;
+}
+.os-glass-preview .reader-terminal::before,
+.os-glass-preview .reader-terminal.is-open::before { border-start-start-radius: 0; border-end-start-radius: 0; }
+.os-glass-preview .reader-chat { padding-inline: 5px; }
+.os-glass-preview .reader-form { padding-inline: 5px; }
+@media (max-width: 600px) and (min-height: 600px) {
+  .os-glass-preview .reader-layout .reader-log-terminal { border-inline-end: 1px solid #a8c9e130; }
+}
+@media (max-width: 600px) {
+  .os-glass-preview .os-monitor.is-maximized .reader-log-terminal { border-inline-end: 1px solid #a8c9e130; }
+}

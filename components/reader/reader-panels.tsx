@@ -3,13 +3,33 @@ import type { ReaderView } from "../../lib/reader/reader-session";
 import type { NarrativeBlock } from "../../lib/engine/narrative-block";
 import { splitSpokenLines } from "../../lib/reader/dialogue";
 import { formatTime, StudyFeed } from "./study-feed";
+import { SoundToggle } from "./camera-feed";
+import { playTypeKey } from "../../lib/reader/audio";
+
+// Right-hand control strip of the CRT: two dials, a power lamp, the sound button and a speaker grille.
+function TvPanel() {
+  return (
+    <div className="reader-tv-panel">
+      <span className="reader-tv-knob" aria-hidden="true" />
+      <span className="reader-tv-knob is-small" aria-hidden="true" />
+      <span className="reader-tv-led" aria-hidden="true" />
+      <SoundToggle />
+      <span className="reader-tv-grille" aria-hidden="true" />
+    </div>
+  );
+}
 
 type Entry = ReaderView["entries"][number];
 type Clue = Extract<NarrativeBlock, { kind: "clue" }>;
 
 const followThreshold = 48;
-const typeCharsPerTick = 2;
-const typeTickMs = 45;
+// Typewriter rhythm: a short, uneven gap per key, longer rests after punctuation.
+function keyDelay(typed: string) {
+  if (/[。！？…]/.test(typed)) return 380;
+  if (/[，、；：]/.test(typed)) return 180;
+  if (typed === "\n") return 260;
+  return 50 + Math.random() * 35;
+}
 
 function isTurnReply(entry: Entry) {
   // The Timeline links scene openings to session start or scene transition.
@@ -84,15 +104,17 @@ function useFollow(dependency: unknown) {
   return { log, onScroll };
 }
 
-export function ScenePanel({ scene, sceneId, eventIds, story, logKey, status, channelOpen, onLogComplete, error }: {
+export function ScenePanel({ scene, sceneId, eventIds, reply, story, logKey, status, onLogComplete, error, onExit, onRestart }: {
+  reply?: { id: number; text: string };
   scene?: string;
   sceneId?: string;
   eventIds?: readonly string[];
   story: Entry[];
   logKey: string;
   status: string;
-  channelOpen: boolean;
   onLogComplete: (key: string) => void;
+  onExit?: () => void;
+  onRestart?: () => void;
   error?: ReactNode;
 }) {
   const { lines, clues: clueMarkers } = toStoryLog(story);
@@ -119,8 +141,14 @@ export function ScenePanel({ scene, sceneId, eventIds, story, logKey, status, ch
       const timer = window.setTimeout(() => { setShown(n => n + 1); setChars(0); }, currentLength > 0 ? 320 : 0);
       return () => window.clearTimeout(timer);
     }
-    const timer = window.setTimeout(() => setChars(n => n + typeCharsPerTick), typeTickMs);
+    const text = current?.kind === "text" ? current.text : "";
+    const timer = window.setTimeout(() => {
+      const next = text[chars];
+      if (next && next.trim()) playTypeKey();
+      setChars(n => n + 1);
+    }, chars === 0 ? 120 : keyDelay(text[chars - 1] ?? ""));
     return () => window.clearTimeout(timer);
+    // `current` is rebuilt each render; its identity is captured by `shown` and its length.
   }, [shown, currentLength, chars]);
 
   const { log, onScroll } = useFollow(`${shown}:${chars}:${lines.length}:${!!error}`);
@@ -150,8 +178,14 @@ export function ScenePanel({ scene, sceneId, eventIds, story, logKey, status, ch
 
   return (
     <section className="reader-panel reader-scene-panel" aria-label="监控与现场记录">
-      <div className="reader-device reader-camera-device">
-        <StudyFeed sceneId={sceneId} scene={scene} eventIds={eventIds} channelOpen={channelOpen} />
+      <div className="reader-device reader-camera-device reader-tv">
+        <div className="reader-tv-body">
+          <div className="reader-tv-screen">
+            <StudyFeed sceneId={sceneId} scene={scene} eventIds={eventIds} reply={reply} onExit={onExit} />
+            <div className="reader-tv-glass" aria-hidden="true" />
+          </div>
+          <TvPanel />
+        </div>
       </div>
       <article className="reader-paper reader-story reader-log-terminal" aria-label="现场记录与线索">
         <div className="reader-tabs" role="tablist" aria-label="切换记录">
@@ -186,9 +220,10 @@ export function ScenePanel({ scene, sceneId, eventIds, story, logKey, status, ch
           </div>}
           {error}
         </div>
-        {tab === "story" && (status || typing) && <footer className="reader-paper-footer">
+        {((tab === "story" && (status || typing)) || onRestart) && <footer className="reader-paper-footer">
           <span className="reader-status" role="status">{status}</span>
-          {typing && <button type="button" className="reader-skip" onClick={skip}>显示全部</button>}
+          {tab === "story" && typing && <button type="button" className="reader-skip" onClick={skip}>显示全部</button>}
+          {onRestart && <button type="button" className="reader-skip" onClick={onRestart}>重新开始</button>}
         </footer>}
       </article>
     </section>

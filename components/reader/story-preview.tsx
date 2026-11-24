@@ -34,7 +34,7 @@ function useTypedHint(message: string, idle: string, active: boolean) {
   return message.slice(0, shown) + (caret || shown < message.length ? "▍" : "");
 }
 
-export function StoryPreview({ onComplete }: { onComplete?: () => void }) {
+export function StoryPreview({ onComplete, onExit }: { onComplete?: () => void; onExit?: () => void }) {
   const [frame, setFrame] = useState<{ view: ReaderView; previous?: ReaderView }>();
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
@@ -42,6 +42,7 @@ export function StoryPreview({ onComplete }: { onComplete?: () => void }) {
   const [outgoing, setOutgoing] = useState<string>();
   const [finishedLog, setFinishedLog] = useState<string>();
   const [deliveredThrough, setDeliveredThrough] = useState(0);
+  const [spokenThrough, setSpokenThrough] = useState(0);
   const started = useRef(false);
   const busy = useRef(false);
 
@@ -64,7 +65,10 @@ export function StoryPreview({ onComplete }: { onComplete?: () => void }) {
         throw new Error(error || "阅读器暂时无法连接，请重试。");
       }
       const next: ReaderView = await response.json();
-      if (command.action === "start") setDeliveredThrough(0);
+      if (command.action === "start") {
+        setDeliveredThrough(0);
+        setSpokenThrough(0);
+      }
       setFrame(current => ({ view: next, previous: current?.view.id === next.id ? current.view : undefined }));
       if (command.action === "danmaku") setText("");
     } catch (error) {
@@ -142,11 +146,13 @@ export function StoryPreview({ onComplete }: { onComplete?: () => void }) {
           scene={visibleView?.scene}
           sceneId={visibleView?.sceneId}
           eventIds={visibleView?.eventIds}
+          reply={replies.findLast(reply => reply.sequence <= spokenThrough)}
           story={visibleStory}
           logKey={logKey}
           status={status}
-          channelOpen={channelOpen}
           onLogComplete={setFinishedLog}
+          onExit={onExit}
+          onRestart={visibleView?.mode === "completed" && logComplete ? () => window.location.reload() : undefined}
           error={failure && (
             <div className="mt-4">
               <p className="reader-fault" role="alert">{failure.message}</p>
@@ -161,6 +167,7 @@ export function StoryPreview({ onComplete }: { onComplete?: () => void }) {
             key={view?.id}
             messages={visibleMessages}
             onRepliesDelivered={setDeliveredThrough}
+            onReplyStarted={setSpokenThrough}
             character={view?.character}
             outgoing={outgoing}
             channelOpen={channelOpen}

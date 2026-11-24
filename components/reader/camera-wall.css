@@ -1,0 +1,84 @@
+.reader-feed.has-camera-wall::after { content: none; }
+.reader-feed.has-camera-wall > :is(.camera-image, .reader-crt, .camera-bubble, .reader-feed-label) {
+  visibility: hidden;
+}
+.reader-feed.has-camera-wall .reader-camera-location { display: none; }
+
+.os-glass-preview .reader button.camera-wall-toggle {
+  display: grid;
+  min-width: 24px;
+  place-items: center;
+}
+.os-glass-preview .reader button.camera-wall-toggle:is(:hover, :focus-visible, [aria-pressed="true"]) {
+  color: #9bd5ff;
+}
+.os-glass-preview .reader button.camera-wall-toggle:focus-visible { outline: 1px solid #9bd5ff; }
+
+.camera-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  padding: 36px 8px 8px;
+  background: #0b1017;
+}
+.camera-wall-viewport {
+  container: feed-wall / size;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+}
+.camera-wall-grid {
+  --wall-gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, calc((100cqh - 2 * var(--wall-gap)) * 40 / 33 + var(--wall-gap)));
+  gap: var(--wall-gap);
+}
+@container feed-wall (min-aspect-ratio: 17/10) {
+  .camera-wall-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100%, calc((100cqh - var(--wall-gap)) * 30 / 11 + 2 * var(--wall-gap)));
+  }
+}
+.camera-wall-grid.is-focused {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, calc(100cqh * 20 / 11));
+}
+.reader .camera-wall button.camera-wall-tile {
+  position: relative;
+  display: block;
+  min-width: 0;
+  aspect-ratio: 20 / 11;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #36536d;
+  border-radius: 0;
+  background: #080f18;
+  cursor: zoom-in;
+}
+.reader .camera-wall button.camera-wall-tile[hidden] { display: none; }
+.reader .camera-wall-grid.is-focused button.camera-wall-tile { cursor: zoom-out; }
+.reader .camera-wall button.camera-wall-tile:is(:hover, :focus-visible) { border-color: #9bd5ff; }
+.reader .camera-wall button.camera-wall-tile:focus-visible { outline: 1px solid #9bd5ff; }
+.reader .camera-wall-tile .camera-image {
+  position: absolute;
+  inset: 0;
+  object-fit: fill;
+}
+.camera-wall-location {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  left: 4px;
+  max-width: calc(100% - 8px);
+  padding: 1px 5px;
+  background: #0b1828d9;
+  color: #dcecfb;
+  font: 11px/1.5 Tahoma, "Microsoft YaHei", sans-serif;
+  text-align: left;
+  opacity: 0;
+}
+.camera-wall-tile:is(:hover, :focus-visible) .camera-wall-location,
+.camera-wall-grid.is-focused .camera-wall-location { opacity: 1; }

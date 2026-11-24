@@ -16,11 +16,17 @@ export type Cue = {
   hei?: ActorCue;
 };
 
+type Box = [number, number, number, number]; // x0, y0, x1, y1
+
+// Open floor where a character may stroll on his own, minus furniture footprints.
+export type Walkable = { minX: number; maxX: number; minY: number; maxY: number; avoid: Box[] };
+
 type SceneStaging = {
   enterFrom: Spot;
   heiExit: Spot;
   opening: Cue;
   events: Record<string, Cue>;
+  walk: Walkable;
 };
 
 // Feet positions. A desk hides the lower half of whoever stands just behind its back legs.
@@ -35,9 +41,18 @@ const offRight: Spot = [345, 125];
 const offLeft: Spot = [-25, 125];
 
 export const staging: Record<string, SceneStaging> = {
+  // Outdoor camera at the research centre entrance, shown before the player joins the channel.
+  s00: {
+    enterFrom: [150, 128],
+    heiExit: [345, 130],
+    opening: { qu: { at: [150, 128] } },
+    events: {},
+    walk: { minX: 40, maxX: 285, minY: 110, maxY: 142, avoid: [[50, 118, 76, 134], [214, 112, 266, 128]] },
+  },
   s01: {
     enterFrom: s1.desk,
     heiExit: s1.door,
+    walk: { minX: 60, maxX: 240, minY: 101, maxY: 132, avoid: [[100, 131, 175, 146], [0, 55, 72, 128]] },
     opening: { qu: { at: s1.desk, pose: "read" } },
     events: {
       e001: { qu: { at: s1.desk, pose: "read" } },
@@ -54,6 +69,7 @@ export const staging: Record<string, SceneStaging> = {
   s02: {
     enterFrom: s2.door,
     heiExit: offLeft,
+    walk: { minX: 30, maxX: 300, minY: 101, maxY: 130, avoid: [[0, 108, 78, 152]] },
     opening: { qu: { at: [196, 108] }, hei: { at: [24, 122] } },
     events: {
       e009: { qu: { at: s2.office, exit: true }, hei: { at: [56, 122] } },
@@ -73,6 +89,7 @@ export const staging: Record<string, SceneStaging> = {
   s03: {
     enterFrom: s3.door,
     heiExit: s3.door,
+    walk: { minX: 80, maxX: 300, minY: 117, maxY: 135, avoid: [[68, 92, 142, 118], [0, 118, 82, 150]] },
     opening: { qu: { at: s3.terminal } },
     events: {
       e021: { qu: { at: s3.terminal, pose: "read" } },
@@ -90,6 +107,7 @@ export const staging: Record<string, SceneStaging> = {
   s04: {
     enterFrom: offRight,
     heiExit: offLeft,
+    walk: { minX: 40, maxX: 300, minY: 101, maxY: 130, avoid: [] },
     opening: { qu: { at: s4.quStand }, hei: { at: s4.heiStand } },
     events: {
       e030: { qu: { at: s4.quStand }, hei: { at: s4.heiStand } },
@@ -100,7 +118,7 @@ export const staging: Record<string, SceneStaging> = {
       e035: { qu: { at: s4.lab, pose: "crouch" }, hei: { at: [90, 124] } },
       e036: { qu: { at: s4.storeroom, exit: true }, hei: { at: [188, 124] } },
       e037: { qu: { at: [120, 106] }, hei: { at: [258, 128] } },
-      e038: { qu: { at: offRight, run: true, exit: true }, hei: { at: [230, 124], run: true } },
+      e038: { qu: { at: [275, 124], run: true }, hei: { at: [253, 117], run: true } },
       e039: { qu: { at: [176, 122], pose: "knife" }, hei: { at: s4.heiStand } },
       e040: { qu: { at: [142, 122], pose: "knife", run: true }, hei: { at: [126, 121] } },
       e041: { qu: { at: [258, 125] }, hei: { at: s4.heiStand } },
@@ -110,6 +128,7 @@ export const staging: Record<string, SceneStaging> = {
   s05: {
     enterFrom: s5.door,
     heiExit: s5.door,
+    walk: { minX: 60, maxX: 240, minY: 101, maxY: 132, avoid: [[100, 131, 175, 146], [0, 55, 72, 128], [174, 99, 224, 142]] },
     opening: { qu: { at: s5.backCabinet } },
     events: {
       e043: { qu: { at: s5.backCabinet, pose: "read" } },
@@ -131,6 +150,7 @@ export const staging: Record<string, SceneStaging> = {
   s06: {
     enterFrom: offRight,
     heiExit: s6.door,
+    walk: { minX: 120, maxX: 300, minY: 101, maxY: 132, avoid: [[68, 92, 142, 118], [28, 110, 126, 146]] },
     opening: { qu: { at: s6.mid } },
     events: {
       e057: { qu: { at: [172, 122] } },
@@ -150,6 +170,23 @@ export const staging: Record<string, SceneStaging> = {
     },
   },
 };
+
+// Things he mutters to himself when nothing is happening.
+export const mutters: Record<string, string[]> = {
+  s00: ["就是这里了。", "灯怎么一直在闪……", "进去吧，别再犹豫了。", "白针，我来了。", "门禁卡应该还能用。", "这么晚了，楼里还亮着灯。"],
+  s01: ["原始记录一定还在。", "白针……", "这份报告不对劲。", "楼上有人吗？", "非设备相关？怎么可能。", "再找找，一定漏了什么。", "页码对不上……"],
+  s02: ["别出声……", "走廊太亮了。", "他会从哪边过来？", "楼梯间应该没锁。", "那支手电好重。"],
+  s03: ["日志应该就在这台终端里。", "快一点，再快一点。", "原来他们早就知道。", "先存下来再说。", "门外是不是有人？"],
+  s04: ["他到底想干什么……", "不能停在这里。", "安全通道在哪？", "刀还在口袋里。"],
+  s05: ["这里比楼上冷多了。", "备份文件会放在哪？", "这些箱子很久没人动过了。", "黑针的账号……"],
+  s06: ["快到出口了。", "值班的人会信我吗？", "证据还在，没丢。", "再坚持一下。"],
+};
+
+// What he says when the viewer clicks him, as if he could feel the camera watching.
+export const pokeLines = [
+  "谁？", "总觉得有人在看我。", "……别催我。", "我知道，我知道。", "嘘。", "你还在吗？",
+  "是监控吗？", "我没时间了。", "别跟着我。", "我听见了。",
+];
 
 // The latest cue for a scene: the most recent event with stage directions, or the scene opening.
 export function cueFor(sceneId: string, eventIds: readonly string[]): Cue | undefined {

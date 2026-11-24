@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Monitor, Mail, Radio, X, FolderClosed, Minus, Square, Copy } from "lucide-react";
+import { Monitor, Mail, X, FolderClosed, Minus, Square, Copy, Search, Globe, Calculator, Volume2, VolumeX, Camera } from "lucide-react";
+import { CameraRecording } from "./study-feed";
 import { StoryPreview } from "./story-preview";
 import { CameraFeed, useShiftClock } from "./camera-feed";
-import { repeatMailChime } from "../../lib/reader/mail-chime";
+import { getAudioVolume, initAudio, isMuted, onMutedChange, playMailArrival, setAudioVolume, setMuted } from "../../lib/reader/audio";
+import { DutyFiles, DutyNote, DutyTimeNotice, MonitorLogin, newNightMail, NightInbox, RefusalAlarm, type NightMailId } from "./night-desktop";
+import { ArchiveRunner } from "./archive-runner";
 import "./desktop.css";
+import "./desktop-glass-preview.css";
 
-type App = "inbox" | "files" | "system";
+type App = "inbox" | "files" | "system" | "browser" | "monitor" | "note";
 type Phase = "desktop" | "frozen" | "fault" | "online";
 const frozenDuration = 780;
 const faultDuration = 640;
@@ -22,26 +26,14 @@ const errorPlacements: CSSProperties[] = [
   { right: "3%", bottom: "17%" },
 ];
 type WindowPosition = { left: number; top: number };
+type WindowId = App | "terminal";
+type DesktopWindow = { id: WindowId; minimized?: boolean; maximized?: boolean; position?: WindowPosition };
+const utilityIds: App[] = ["browser", "monitor", "inbox", "files", "note", "system"];
 const apps = [
   { id: "inbox", title: "收件箱", Icon: Mail },
   { id: "files", title: "我的文件", Icon: FolderClosed },
   { id: "system", title: "本机信息", Icon: Monitor },
 ] as const;
-
-function playMailArrival(delayMs: number) {
-  if (!window.AudioContext) return;
-  let context: AudioContext | undefined;
-  const close = () => { void context?.close().catch(() => {}); };
-  try {
-    context = new AudioContext();
-    const stop = repeatMailChime(context, context.destination, delayMs);
-    const stopAndClose = () => { stop(); close(); };
-    void context.resume().catch(stopAndClose);
-    return stopAndClose;
-  } catch {
-    close();
-  }
-}
 
 function SignalSnow() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -91,72 +83,300 @@ function WindowControls({ maximized, onMinimize, onMaximize, onClose }: {
   </div>;
 }
 
-export function GameDesktop() {
+const desktopTimeFormat = new Intl.DateTimeFormat("zh-CN", {
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+});
+const countdownDurationMs = 3 * 60 * 60 * 1000;
+
+function DesktopClock({ shiftTime, shiftDate }: { shiftTime?: string; shiftDate?: string }) {
+  const [now, setNow] = useState<number>();
+  const [countdownOpen, setCountdownOpen] = useState(false);
+  const [deadline, setDeadline] = useState<number>();
+  const toggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const update = () => setNow(Date.now());
+    update();
+    const timer = window.setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, []);
+  const time = shiftTime ?? (now === undefined ? undefined : desktopTimeFormat.format(now));
+  const seconds = now === undefined || deadline === undefined ? 0 : Math.max(0, Math.ceil((deadline - now) / 1000));
+  const countdown = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
+    .map(part => String(part).padStart(2, "0")).join(":");
+  function closeCountdown() {
+    setCountdownOpen(false);
+    toggle.current?.focus();
+  }
+  return <div className="desktop-clock-wrap" onKeyDown={event => {
+    if (event.key === "Escape" && countdownOpen) {
+      event.preventDefault();
+      closeCountdown();
+    }
+  }}>
+    <button type="button" ref={toggle} className="desktop-clock-button taskbar-action" aria-label="倒计时"
+      aria-expanded={countdownOpen} aria-controls={countdownOpen ? "desktop-countdown" : undefined}
+      onClick={() => {
+        const current = Date.now();
+        setNow(current);
+        setDeadline(saved => saved ?? current + countdownDurationMs);
+        setCountdownOpen(open => !open);
+      }}>
+      {shiftDate && <span className="desktop-shift-date">{shiftDate}</span>}
+      <time className="desktop-clock" dateTime={time}>{time ?? "--:--:--"}</time>
+    </button>
+    {countdownOpen && <section id="desktop-countdown" className="os-window desktop-countdown"
+      role="dialog" aria-label="倒计时">
+      <header className="window-bar">
+        <span>倒计时</span>
+        <div className="window-controls"><button type="button" onClick={closeCountdown} aria-label="关闭倒计时"><X /></button></div>
+      </header>
+      <div role="timer" aria-label="剩余时间" className="desktop-countdown-time">{countdown}</div>
+    </section>}
+  </div>;
+}
+
+function DesktopVolume() {
+  const [open, setOpen] = useState(false);
+  const [level, setLevel] = useState(100);
+  const [silenced, setSilenced] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const slider = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setLevel(getAudioVolume());
+    return onMutedChange(setSilenced);
+  }, []);
+
+  useEffect(() => {
+    if (open) slider.current?.focus();
+  }, [open]);
+
+  return <div className="desktop-volume-wrap" onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }} onKeyDown={event => {
+    if (open && event.key === "Escape") {
+      event.stopPropagation();
+      setOpen(false);
+      toggle.current?.focus();
+    }
+  }}>
+    <button type="button" ref={toggle} className="desktop-volume-button taskbar-action" title="网站音量"
+      aria-label="网站音量" aria-expanded={open} aria-controls={open ? "desktop-volume" : undefined}
+      onClick={() => setOpen(value => !value)}>
+      {level === 0 || silenced ? <VolumeX size={16} /> : <Volume2 size={16} />}
+    </button>
+    {open && <div className="desktop-volume" id="desktop-volume">
+      <label htmlFor="desktop-volume-slider">音量</label>
+      <input id="desktop-volume-slider" type="range" ref={slider}
+        min={0} max={100} value={silenced ? 0 : level}
+        aria-valuetext={(silenced ? 0 : level) + "%"}
+        onChange={event => {
+          const next = event.currentTarget.valueAsNumber;
+          setAudioVolume(next);
+          if (next > 0 && isMuted()) setMuted(false);
+          setLevel(next);
+        }} />
+      <output htmlFor="desktop-volume-slider">{silenced ? 0 : level}%</output>
+    </div>}
+  </div>;
+}
+
+const newsDateFormat = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric", month: "long", day: "numeric",
+});
+
+function previousWeek(date: Date) {
+  const result = new Date(date);
+  result.setDate(result.getDate() - 7);
+  return result;
+}
+
+function BrowserPage({ openingNews, openedOn, active }: { openingNews: boolean; openedOn?: Date; active: boolean }) {
+  const receivedOn = openedOn && previousWeek(openedOn);
+  return <div className="desktop-browser-body">
+    <div className="desktop-browser-toolbar">
+      <Globe size={15} aria-hidden="true" />
+      <span className="desktop-browser-address">
+        {openingNews ? "https://beicheng-daily.invalid/investigations/17" : "http://archive.research.invalid/"}
+      </span>
+    </div>
+    {openingNews ? <div className="opening-news-page">
+      <div className="opening-news-masthead">
+        <strong>北城日报</strong>
+        <span>调查报道</span>
+      </div>
+      <article className="opening-news-article" aria-labelledby="opening-news-title">
+        <p className="opening-news-byline">{openedOn && <>{newsDateFormat.format(openedOn)} · </>}记者 林岑</p>
+        <h1 id="opening-news-title">有人找到了17号实验室事故的原始记录</h1>
+        <p className="opening-news-lead">一份匿名送达的设备日志，让一桩以【非实验室责任】结案的死亡事故重新受到关注。</p>
+        <p>两年前，17号志愿者在一次神经康复设备试验中死亡。研究中心终止了当期试验，随后发布简报，认定这起死亡事故属于「非实验室责任」。</p>
+        <p>{receivedOn ? newsDateFormat.format(receivedOn) : "七天前"}，一名未具名的调查者向本报递交了事故当晚的部分日志。日志显示，试验中断前设备曾发出告警。消息传出后，不少人认为是现场人员调错了参数，研究中心为了避免追责才把告警从报告里删去。</p>
+        <p>记者看到的日志只有两页，其中一页缺了页尾。现有材料无法确认谁动过参数，也无法判断值班人员在事发前知道多少。研究中心未回应询问，递交日志的人也未再与本报联系。</p>
+      </article>
+    </div> : <article className="desktop-browser-error">
+      <h2>404 Not Found</h2>
+      <p>页面未找到。请求的地址可能已被移除或更改。</p>
+      <hr />
+      <code>HTTP/1.1 404</code>
+      <ArchiveRunner active={active} />
+    </article>}
+  </div>;
+}
+
+export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }) {
   const [phase, setPhase] = useState<Phase>("desktop");
-  const [app, setApp] = useState<App>();
-  const [utilityMinimized, setUtilityMinimized] = useState(false);
-  const [utilityMaximized, setUtilityMaximized] = useState(false);
-  const [monitorVisibility, setMonitorVisibility] = useState<"open" | "minimized" | "closed">("open");
-  const [monitorMaximized, setMonitorMaximized] = useState(false);
+  const [openedOn, setOpenedOn] = useState<Date>();
+  const [windows, setWindows] = useState<DesktopWindow[]>(glassPreview ? [{ id: "browser" }] : []);
   const [read, setRead] = useState(false);
+  const [intro, setIntro] = useState<"locked" | "mail" | "accepted" | "unlocked">("locked");
+  const [selectedMail, setSelectedMail] = useState<NightMailId>();
+  const [readNightMail, setReadNightMail] = useState<NightMailId[]>([]);
+  const [alarming, setAlarming] = useState(false);
+  const [showTimeNotice, setShowTimeNotice] = useState(false);
   const [refusalCount, setRefusalCount] = useState(0);
   const stopMailChime = useRef<(() => void) | undefined>(undefined);
+  const openMonitorAfterFault = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishStory = useCallback(() => setFinished(true), []);
-  const [position, setPosition] = useState<WindowPosition>();
-  const [utilityPosition, setUtilityPosition] = useState<WindowPosition>();
-  const monitor = useRef<HTMLElement>(null);
-  const utility = useRef<HTMLElement>(null);
   const drag = useRef<{
     dx: number; dy: number; pointerId: number; target: HTMLElement;
     update: (position: WindowPosition) => void;
   } | null>(null);
-  const clock = useShiftClock(false);
-  const appTitle = apps.find(item => item.id === app)?.title;
+  const clock = useShiftClock();
+  const nightDesktop = glassPreview && phase === "online";
+  const monitorReady = phase === "online" && (!glassPreview || intro === "unlocked");
+  const unreadCount = phase !== "online" ? 0 : glassPreview
+    ? (intro === "locked" ? 0 : newNightMail.filter(id => !readNightMail.includes(id)).length)
+    : Number(!read);
+  const shiftDate = nightDesktop && openedOn ? newsDateFormat.format(previousWeek(openedOn)) : undefined;
+  const openingNews = glassPreview && phase === "desktop";
+  const showMonitorShortcut = nightDesktop
+    || (openingNews && !windows.some(window => window.id === "browser" && !window.minimized));
+  const terminal = windows.find(window => window.id === "terminal");
+  const foreground = windows.findLast(window => !window.minimized)?.id;
+  const waitingForAnswer = intro === "mail" && readNightMail.includes("stranger");
+  const windowTitle = (id: WindowId) => {
+    if (id === "browser") return openingNews ? "北城日报 · 浏览器" : "浏览器";
+    if (id === "terminal") return "监控终端";
+    if (id === "monitor") return "监控";
+    if (id === "note") return "值班备忘.txt · 记事本";
+    return apps.find(item => item.id === id)?.title;
+  };
+  const windowStyle = (id: WindowId, window: DesktopWindow): CSSProperties => ({
+    ...(!window.maximized && window.position),
+    zIndex: 2 + windows.findIndex(item => item.id === id),
+  });
+  const desktopStatus = phase === "frozen" || refusalCount > 0 ? "程序未响应"
+    : phase === "fault" ? "信号中断" : undefined;
+
+  useEffect(() => {
+    if (glassPreview) setOpenedOn(new Date());
+  }, [glassPreview]);
 
   useEffect(() => () => stopMailChime.current?.(), []);
 
-  const closeUtility = useCallback(() => {
-    setApp(undefined);
-    setUtilityMinimized(false);
-    setUtilityMaximized(false);
-    setUtilityPosition(undefined);
+  const focusWindow = useCallback((id: WindowId) => {
+    setWindows(current => {
+      const existing = current.find(window => window.id === id);
+      if (current.at(-1) === existing && existing && !existing.minimized) return current;
+      return [...current.filter(window => window.id !== id), { ...existing, id, minimized: false }];
+    });
   }, []);
 
+  const requestNightMail = useCallback(() => {
+    if (intro !== "locked") return;
+    setIntro("mail");
+    stopMailChime.current = playMailArrival(0);
+  }, [intro]);
+
+  function updateWindow(id: WindowId, changes: Partial<Omit<DesktopWindow, "id">>) {
+    setWindows(current => current.map(window => window.id === id ? { ...window, ...changes } : window));
+  }
+
+  const dismissWindow = useCallback((id: WindowId, minimize = false) => {
+    if (id === "inbox" && waitingForAnswer) {
+      setSelectedMail("stranger");
+      focusWindow(id);
+      return;
+    }
+    setWindows(current => minimize
+      ? current.map(window => window.id === id ? { ...window, minimized: true } : window)
+      : current.filter(window => window.id !== id));
+  }, [waitingForAnswer, focusWindow]);
+
   useEffect(() => {
-    if (!app || utilityMinimized) return;
+    if (!foreground || alarming || showTimeNotice) return;
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.key !== "Escape" || event.defaultPrevented || !foreground) return;
       event.preventDefault();
-      closeUtility();
+      dismissWindow(foreground);
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [app, utilityMinimized, closeUtility]);
+  }, [foreground, alarming, showTimeNotice, dismissWindow]);
 
   useEffect(() => {
     if (phase !== "frozen" && phase !== "fault") return;
-    const timer = setTimeout(() => setPhase(phase === "frozen" ? "fault" : "online"),
-      phase === "frozen" ? frozenDuration : faultDuration);
+    const timer = setTimeout(() => {
+      if (phase === "frozen") {
+        setPhase("fault");
+      } else {
+        setPhase("online");
+        if (openMonitorAfterFault.current) {
+          openMonitorAfterFault.current = false;
+          focusWindow("monitor");
+          requestNightMail();
+        } else if (!glassPreview) focusWindow("terminal");
+      }
+    }, phase === "frozen" ? frozenDuration : faultDuration);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [phase, glassPreview, focusWindow, requestNightMail]);
+
+  // Sound starts with the first click anywhere, as browsers require.
+  useEffect(initAudio, []);
 
   useEffect(() => {
-    const reset = () => { setPosition(undefined); setUtilityPosition(undefined); };
+    const reset = () => setWindows(current => current.map(window => ({ ...window, position: undefined })));
     window.addEventListener("resize", reset);
     return () => window.removeEventListener("resize", reset);
   }, []);
 
   function launch(id: App) {
-    if (phase === "desktop") {
-      stopMailChime.current = playMailArrival(frozenDuration + faultDuration);
+    if (phase === "desktop" && (glassPreview || id !== "browser")) {
+      if (openingNews) dismissWindow("browser");
+      openMonitorAfterFault.current = glassPreview && id === "monitor";
+      if (!glassPreview) stopMailChime.current = playMailArrival(frozenDuration + faultDuration);
       setPhase("frozen");
+      return;
     }
-    if (phase !== "online") return;
-    if (app !== id) setUtilityMaximized(false);
-    setApp(id);
-    setUtilityMinimized(false);
+    if (phase !== "online" && !(phase === "desktop" && id === "browser")) return;
+    if (nightDesktop && id === "monitor") requestNightMail();
+    focusWindow(id === "monitor" && monitorReady ? "terminal" : id);
+  }
+  function selectNightMail(id: NightMailId) {
+    setSelectedMail(id);
+    if (readNightMail.includes(id)) return;
+    const next = [...readNightMail, id];
+    setReadNightMail(next);
+    if (newNightMail.every(mail => next.includes(mail))) {
+      stopMailChime.current?.();
+      stopMailChime.current = undefined;
+    }
+  }
+  function acceptNightMail() {
+    setAlarming(false);
+    setIntro("accepted");
+    setShowTimeNotice(true);
+  }
+  function unlockMonitor() {
+    setIntro("unlocked");
+    dismissWindow("monitor");
+    focusWindow("terminal");
   }
   function readMail() {
     stopMailChime.current?.();
@@ -166,14 +386,14 @@ export function GameDesktop() {
   function connectMonitor() {
     setRefusalCount(0);
     setPlaying(true);
-    setMonitorVisibility("open");
-    closeUtility();
+    if (!glassPreview) dismissWindow("inbox");
+    focusWindow("terminal");
   }
-  function startDrag(e: PointerEvent<HTMLElement>, target: HTMLElement | null,
-    update: (position: WindowPosition) => void) {
+  function startDrag(e: PointerEvent<HTMLElement>, id: WindowId) {
+    const target = e.currentTarget.parentElement;
     if (e.button !== 0 || !e.isPrimary || !target || (e.target as Element).closest("button")) return;
     const box = target.getBoundingClientRect();
-    drag.current = { dx: e.clientX - box.left, dy: e.clientY - box.top, pointerId: e.pointerId, target, update };
+    drag.current = { dx: e.clientX - box.left, dy: e.clientY - box.top, pointerId: e.pointerId, target, update: position => updateWindow(id, { position }) };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
   function move(e: PointerEvent<HTMLElement>) {
@@ -188,41 +408,53 @@ export function GameDesktop() {
   function endDrag(e: PointerEvent<HTMLElement>) {
     if (drag.current?.pointerId === e.pointerId) drag.current = null;
   }
-  return <div className={`os phase-${phase}`}>
+  return <div className={`os phase-${phase}${glassPreview ? " os-glass-preview" : ""}`}>
     <div className="os-wall" aria-hidden="true">
+      {glassPreview && <div className="desktop-ribbons" />}
+      {nightDesktop && <div className="night-wall-label">爱生生物有限公司内部电脑</div>}
       <div className="desktop-brand">
         <span className="desktop-brand-mark" />
         <span>岚序电脑</span>
       </div>
     </div>
     <nav className="shortcuts" aria-label="桌面软件">{apps.map(({id,title,Icon}) => {
-      const unread = id === "inbox" && phase === "online" && !read;
+      const unread = id === "inbox" && unreadCount > 0;
       return <button key={id} onClick={() => launch(id)} disabled={phase === "frozen" || phase === "fault"}
-        aria-label={unread ? "收件箱，1 封未读" : undefined}>
+        aria-label={unread ? "收件箱，" + unreadCount + " 封未读" : undefined}>
         <span className="icon-frame">
           <Icon />
-          {unread && <span className="inbox-unread-badge" aria-hidden="true">1</span>}
+          {unread && <span className="inbox-unread-badge" aria-hidden="true">{unreadCount}</span>}
         </span>{title}
       </button>;
     })}</nav>
     {phase === "fault" && <SignalSnow />}
-    {phase === "online" && <section ref={monitor} className={`os-monitor os-window${monitorMaximized ? " is-maximized" : ""}`}
-      aria-label="监控终端" hidden={monitorVisibility !== "open"}
-      style={monitorMaximized ? undefined : position}>
-      <header className={`window-bar${monitorMaximized ? "" : " draggable"}`}
-        onPointerDown={monitorMaximized ? undefined : e => startDrag(e, monitor.current, setPosition)}
+    {showMonitorShortcut && <button type="button" className="night-monitor-shortcut" onClick={() => launch("monitor")}>
+      <span className="icon-frame"><Camera aria-hidden="true" /></span>监控
+    </button>}
+    {monitorReady && <section className={"os-monitor os-window" + (terminal?.maximized ? " is-maximized" : "")}
+      aria-label="监控终端" hidden={!terminal || terminal.minimized}
+      style={terminal && windowStyle("terminal", terminal)}
+      onPointerDown={() => focusWindow("terminal")} onFocus={() => focusWindow("terminal")}>
+      <header className={terminal?.maximized ? "window-bar" : "window-bar draggable"}
+        onPointerDown={terminal?.maximized ? undefined : e => startDrag(e, "terminal")}
         onPointerMove={move} onLostPointerCapture={endDrag}>
-        <span><Radio size={16}/> 监控终端</span>
+        <span>监控终端</span>
         <div className="window-actions">
-          <WindowControls maximized={monitorMaximized}
-            onMinimize={() => setMonitorVisibility("minimized")}
-            onMaximize={() => setMonitorMaximized(on => !on)}
-            onClose={() => { setMonitorVisibility("closed"); setMonitorMaximized(false); }} />
+          <WindowControls maximized={!!terminal?.maximized}
+            onMinimize={() => dismissWindow("terminal", true)}
+            onMaximize={() => updateWindow("terminal", { maximized: !terminal?.maximized })}
+            onClose={() => dismissWindow("terminal")} />
         </div>
       </header>
-      {playing ? <StoryPreview onComplete={finishStory}/> : <div className={`intercept${refusalCount ? " has-fault" : ""}`}>
-        <CameraFeed sceneId="s01"/><div className="cam-caption"><b>● REC</b>　CAM / 01</div>
-        <div className="cam-location">一楼档案室</div></div>}
+      {playing ? <StoryPreview onComplete={finishStory} onExit={nightDesktop ? () => dismissWindow("terminal") : undefined}/> : <div className={`intercept${refusalCount ? " has-fault" : ""}`}>
+        <CameraFeed sceneId="s00" whitePinAtEntrance={nightDesktop}/>
+        <div className="reader-feed-top reader-meta">
+          {nightDesktop && <button type="button" className="camera-exit" onClick={() => dismissWindow("terminal")}>退出</button>}
+          <div className="reader-feed-identity"><span>CAM / 00</span><CameraRecording /></div>
+        </div>
+        <div className="cam-location">研究中心正门</div>
+        {nightDesktop && <button type="button" className="assist night-enter-story" onClick={connectMonitor}>进入中控</button>}
+      </div>}
     </section>}
     {refusalCount > 0 && <div className="connection-errors">
       <span className="sr-only" role="status">协助连接故障，累计拒绝 {refusalCount} 次。</span>
@@ -235,18 +467,31 @@ export function GameDesktop() {
         </div>;
       })}
     </div>}
-    {app && <section ref={utility} className={`utility os-window${utilityMaximized ? " is-maximized" : ""}`}
-      aria-label={appTitle} hidden={utilityMinimized} style={utilityMaximized ? undefined : utilityPosition}>
-      <header className={`window-bar${utilityMaximized ? "" : " draggable"}`}
-        onPointerDown={utilityMaximized ? undefined : e => startDrag(e, utility.current, setUtilityPosition)}
+    {utilityIds.map(app => {
+      const window = windows.find(item => item.id === app);
+      if (!window) return null;
+      return <section key={app} data-night-app={nightDesktop ? app : undefined}
+        className={'utility os-window' + (app === "browser" ? " desktop-browser" : "") +
+          (app === "browser" && openingNews ? " has-opening-news" : "") + (window.maximized ? " is-maximized" : "")}
+        aria-label={windowTitle(app)} hidden={window.minimized} style={windowStyle(app, window)}
+        onPointerDown={() => focusWindow(app)} onFocus={() => focusWindow(app)}>
+      <header className={window.maximized ? "window-bar" : "window-bar draggable"}
+        onPointerDown={window.maximized ? undefined : e => startDrag(e, app)}
         onPointerMove={move} onLostPointerCapture={endDrag}>
-        <span>{appTitle}</span>
-        <WindowControls maximized={utilityMaximized}
-          onMinimize={() => setUtilityMinimized(true)}
-          onMaximize={() => setUtilityMaximized(on => !on)}
-          onClose={closeUtility} />
+        <span>{windowTitle(app)}</span>
+        <WindowControls maximized={!!window.maximized}
+          onMinimize={() => dismissWindow(app, true)}
+          onMaximize={() => updateWindow(app, { maximized: !window.maximized })}
+          onClose={() => dismissWindow(app)} />
       </header>
-      <div className="utility-body">{app === "inbox" ? <>
+      {app === "browser" ? <BrowserPage openingNews={openingNews} openedOn={openedOn} active={foreground === "browser" && !alarming && !showTimeNotice} />
+      : nightDesktop && app === "monitor" ? <MonitorLogin accepted={intro === "accepted"} onUnlock={unlockMonitor} />
+      : nightDesktop && app === "inbox" ? <NightInbox delivered={intro !== "locked"}
+        read={readNightMail} selected={selectedMail} accepted={intro === "accepted" || intro === "unlocked"}
+        onSelect={selectNightMail} onAccept={acceptNightMail} onRefuse={() => setAlarming(true)} />
+      : nightDesktop && app === "note" ? <DutyNote />
+      : nightDesktop && app === "files" && !finished ? <DutyFiles onOpenNote={() => launch("note")} />
+      : <div className="utility-body">{app === "inbox" ? <>
         <small>系统邮局　/　收件箱</small>
         <button className="mail-row" onClick={readMail}>
           <Mail size={20}/><strong>强制协助通知</strong>
@@ -263,17 +508,32 @@ export function GameDesktop() {
           </div></article>}
       </> : app === "files" ? <><small>本地磁盘　/　工作目录</small><h2>我的文件</h2>{finished ? <ul>{["完整叙事文本", "人物与世界设定", "故事分析", "弹幕交互设计"].map(name =>
           <li key={name}><a href={`/story-archive/${name}.txt`} download>{name} ↓</a></li>)}</ul> : <p>调查结束后，本次任务的剧本档案将在这里开放。</p>}</> :
-        <><small>终端系统　/　设备状态</small><h2>本机信息</h2><p>工作模式　夜班值守</p><p>监控通道　已连接</p><p>关闭权限　由系统管理</p></>}</div>
-    </section>}
+        <><small>终端系统　/　设备状态</small><h2>本机信息</h2><p>工作模式　夜班值守</p><p>监控通道　已连接</p><p>关闭权限　由系统管理</p></>}</div>}
+      </section>;
+    })}
     <footer className="os-taskbar">
+      {glassPreview && <div className="taskbar-launchers">
+        <span aria-hidden="true" className="taskbar-static taskbar-computer" title="电脑"><Monitor size={17}/></span>
+        <span aria-hidden="true" className="taskbar-static"><Search size={14}/></span>
+        <span aria-hidden="true" className="taskbar-static" title="文件资源管理器"><FolderClosed size={16}/></span>
+        <button type="button" className="taskbar-static taskbar-browser taskbar-action" aria-label="打开浏览器" title="浏览器"
+          disabled={phase === "frozen" || phase === "fault"} onClick={() => launch("browser")}><Globe size={16}/></button>
+        <span aria-hidden="true" className="taskbar-static" title="计算器"><Calculator size={16}/></span>
+      </div>}
       <div className="taskbar-windows">
-        {monitorVisibility === "minimized" && <button onClick={() => setMonitorVisibility("open")}><Monitor size={15}/> 监控终端</button>}
-        {utilityMinimized && app && <button onClick={() => setUtilityMinimized(false)}>{appTitle}</button>}
+        {windows.map(window => <button type="button" key={window.id}
+          aria-pressed={foreground === window.id} onClick={() => focusWindow(window.id)}>
+          {windowTitle(window.id)}
+        </button>)}
       </div>
       <div className="taskbar-tray">
-        {phase === "online" && <button onClick={() => launch("inbox")}><Mail size={15}/> {read ? "收件箱" : "1 封未读"}</button>}
-        <span>{phase === "frozen" || refusalCount > 0 ? "程序未响应" : phase === "fault" ? "信号中断" : clock}</span>
+        {glassPreview && <DesktopVolume />}
+        {phase === "online" && <button className="taskbar-action" onClick={() => launch("inbox")}><Mail size={15}/> {unreadCount ? unreadCount + " 封未读" : "收件箱"}</button>}
+        {desktopStatus && <span>{desktopStatus}</span>}
+        {glassPreview ? <DesktopClock shiftTime={nightDesktop ? clock : undefined} shiftDate={shiftDate} /> : !desktopStatus && <span>{clock}</span>}
       </div>
     </footer>
+    {alarming && <RefusalAlarm onAccept={acceptNightMail} />}
+    {showTimeNotice && <DutyTimeNotice onDismiss={() => setShowTimeNotice(false)} />}
   </div>;
 }

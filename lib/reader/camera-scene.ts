@@ -85,7 +85,46 @@ const box = (ctx: Ctx, x: number, y: number, w: number, h: number, c: number) =>
 
 // ---- Room shell: walls, floor, ceiling and things mounted on the back wall -----------------
 
+// Outdoor camera above the main entrance: night sky, facade, steps and paving.
+function drawEntrance(ctx: Ctx) {
+  const poly = (pts: Point[], c: number) => fillPoly(ctx, pts, palette[c]);
+  box(ctx, 0, 0, CAMERA_WIDTH, 100, 0); // night sky
+  box(ctx, 0, 60, CAMERA_WIDTH, 40, 1);
+  for (const [x, y] of [[14, 8], [52, 20], [96, 5], [230, 12], [276, 26], [305, 6], [180, 3]]) box(ctx, x, y, 1, 1, 7);
+  // Facade with a grid of mostly dark windows; a couple are still lit.
+  box(ctx, 30, 14, 260, 86, 2);
+  box(ctx, 30, 14, 260, 3, 3);
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 9; col++) {
+      const x = 40 + col * 28, y = 22 + row * 22;
+      if (x > 124 && x < 186 && row > 0) continue; // leave room for the entrance
+      const lit = (row === 0 && col === 6) || (row === 2 && col === 1);
+      box(ctx, x, y, 16, 12, lit ? 6 : 1);
+      if (lit) box(ctx, x + 2, y + 2, 12, 2, 8);
+    }
+  }
+  // Entrance sign, glass doors and steps.
+  box(ctx, 126, 42, 68, 8, 1); box(ctx, 128, 44, 64, 4, 4);
+  for (let i = 0; i < 8; i++) box(ctx, 132 + i * 7, 45, 4, 2, 8);
+  box(ctx, 140, 54, 40, 46, 1); box(ctx, 143, 57, 16, 43, 5); box(ctx, 161, 57, 16, 43, 5);
+  box(ctx, 156, 76, 2, 6, 8); box(ctx, 162, 76, 2, 6, 8);
+  box(ctx, 124, 100, 72, 3, 5); box(ctx, 118, 103, 84, 3, 4); box(ctx, 112, 106, 96, 4, 5);
+  // Paving: seams run to the vanishing point, rows tighten toward the building.
+  box(ctx, 0, 100, CAMERA_WIDTH, 76, 3);
+  const k = (100 - VP[1]) / (CAMERA_HEIGHT - VP[1]);
+  for (let x = -360; x <= 680; x += 50) drawLine(ctx, [[VP[0] + (x - VP[0]) * k, 100], [x, CAMERA_HEIGHT]], palette[2]);
+  for (const m of [1.2, 1.5, 1.9, 2.5]) {
+    const y = Math.round(VP[1] + (100 - VP[1]) * m);
+    drawLine(ctx, [[0, y], [CAMERA_WIDTH, y]], palette[2]);
+  }
+  // Shrubs along the facade.
+  for (const x0 of [36, 206]) {
+    for (let i = 0; i < 6; i++) poly([[x0 + i * 14, 102], [x0 + i * 14 + 7, 90 + (i % 2) * 3], [x0 + i * 14 + 16, 102]], 1);
+  }
+}
+
 export function drawShell(ctx: Ctx, scene: number) {
+  if (scene === 0) { drawEntrance(ctx); return; }
   const poly = (pts: Point[], c: number) => fillPoly(ctx, pts, palette[c]);
   const line = (pts: Point[], c: number, keep?: (x: number, y: number) => boolean) => drawLine(ctx, pts, palette[c], 1, keep);
   const { left, right, top, bottom } = BACK;
@@ -186,7 +225,36 @@ const stairs: Drawable = {
 const papers = (ctx: Ctx) => { for (let i = 0; i < 4; i++) box(ctx, 127 + i * 2, 112 + i, 11, 2, 8); };
 const terminal = (ctx: Ctx) => { box(ctx, 106, 65, 28, 18, 1); box(ctx, 108, 67, 24, 13, 5); box(ctx, 117, 83, 5, 4, 2); };
 
+// Street lamp with a flickering pool of light on the paving.
+const streetLamp: Drawable = {
+  baseY: 128,
+  draw(ctx) {
+    const on = Math.random() > 0.04; // the bulb drops out now and then
+    if (on) {
+      ctx.save();
+      ctx.globalAlpha = 0.09;
+      fillPoly(ctx, [[58, 40], [68, 40], [96, 130], [30, 130]], palette[9]);
+      ctx.globalAlpha = 0.14;
+      fillPoly(ctx, [[34, 126], [92, 126], [100, 134], [26, 134]], palette[9]);
+      ctx.restore();
+    }
+    box(ctx, 61, 40, 3, 88, 1);
+    box(ctx, 55, 35, 15, 5, 5);
+    box(ctx, 58, 40, 9, 2, on ? 9 : 4);
+  },
+};
+
+const bench: Drawable = {
+  baseY: 126,
+  draw(ctx) {
+    box(ctx, 218, 106, 44, 3, 5); // backrest
+    fillPoly(ctx, [[216, 114], [264, 114], [268, 119], [212, 119]], palette[6]);
+    box(ctx, 216, 119, 3, 7, 1); box(ctx, 261, 119, 3, 7, 1);
+  },
+};
+
 export function sceneProps(scene: number): Drawable[] {
+  if (scene === 0) return [streetLamp, bench];
   if (scene === 1 || scene === 5) {
     const props = [
       ...[80, 106, 132].map(x => cabinet(x, 44, 24, 53, 0.03)),
