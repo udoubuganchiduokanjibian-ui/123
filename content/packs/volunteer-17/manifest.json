@@ -3,6 +3,7 @@
   "id": "volunteer-17",
   "title": "志愿者编号17",
   "entrySceneId": "s01",
+  "firstInterventionLine": "我是曲别针，白针的哥哥。\n我在一楼档案室，刚拍下17号项目的安全报告。\n我得找到原始记录。\n等等，你是谁？怎么接上这条线的？",
   "character": {
     "id": "paperclip",
     "name": "曲别针",

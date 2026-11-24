@@ -21,7 +21,8 @@ export const gameEventSchema = z.strictObject({
 export const autonomousProposalSchema = z.strictObject({ actionId: idSchema });
 
 export const agentTurnOutputSchema = z.strictObject({
-  narration: textSchema,
+  narration: z.string().trim(),
+  delivery: z.enum(["direct", "hesitant"]).optional(),
   danmakuDecisions: z.array(z.strictObject({
     danmakuId: idSchema,
     decision: z.enum(["accept", "defer", "reject", "question", "infer"]),

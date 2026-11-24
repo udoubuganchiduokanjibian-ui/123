@@ -34,6 +34,7 @@ export class NarrativeEngine {
   #pending: Danmaku[] = [];
   #lastDanmaku = 0;
   #openEventIds: string[] = [];
+  #sentFirstInterventionLine = false;
   #processing = false;
   #queueVersion = 0;
   #receipts = new Map<string, Danmaku>();
@@ -97,6 +98,14 @@ export class NarrativeEngine {
     this.#timeline.append({
       type: "intervention_opened", source: "ai_system", content: { eventIds: this.#openEventIds },
     });
+    const line = this.#pack.manifest.firstInterventionLine;
+    if (line && !this.#sentFirstInterventionLine) {
+      this.#sentFirstInterventionLine = true;
+      this.#timeline.append({
+        type: "narrative_block", source: "protagonist", sceneId: this.#state.currentSceneId,
+        content: { kind: "narration", text: line },
+      });
+    }
     return true;
   }
 
@@ -383,10 +392,15 @@ export class NarrativeEngine {
     });
     this.#state = draft;
     this.#pending = this.#pending.filter(({ id }) => !messages.has(id));
-    entries.push({
-      type: "narrative_block", source: "protagonist",
-      content: { kind: "narration", text: output.narration },
-    });
+    if (output.narration) {
+      entries.push({
+        type: "narrative_block", source: "protagonist",
+        content: {
+          kind: "narration", text: output.narration,
+          ...(output.delivery && { delivery: output.delivery }),
+        },
+      });
+    }
     entries.push({
       type: "turn_committed", source: "ai_system",
       content: { turn: draft.turn, trust: draft.trust, memoriesAdded: output.memories.length },

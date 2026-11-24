@@ -108,3 +108,22 @@ for (const [name, reply] of [
     assert.deepEqual(session.getSnapshot(), before);
   });
 }
+
+
+test("a silent response still commits the turn without a chat entry", async () => {
+  const session = sessionWith(({ messages }) => {
+    const { playerInput } = JSON.parse(messages[1].content);
+    return JSON.stringify({
+      narration: " ",
+      danmakuDecisions: [{ danmakuId: playerInput[0].id, decision: "defer", reason: "暂且搁置。" }],
+      proposedEvents: [], nextStep: { kind: "stay" }, memories: [], trustDelta: 0,
+    });
+  });
+  session.submitDanmaku({ kind: "information", text: "我知道那件事。" });
+  const before = session.advanceNarrative();
+  const after = await session.processIntervention();
+  const entries = after.timeline.slice(before.timeline.length);
+  assert.equal(after.state.turn, before.state.turn + 1);
+  assert.ok(entries.some(entry => entry.type === "narrative_block" && entry.content.kind === "decision"));
+  assert.ok(!entries.some(entry => entry.type === "narrative_block" && entry.content.kind === "narration"));
+});

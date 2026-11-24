@@ -1,0 +1,116 @@
+.reader .reader-log-terminal {
+  --line: #2c4965;
+  --signal: #9bd5ff;
+  --fault: #ff9b91;
+  --muted: #88b2d2;
+  --hand: var(--mono);
+  --rule: 24px;
+  margin-inline: 0;
+  color: #a9d4f7;
+  background: #080f18;
+  border: 1px solid #2e4963;
+  border-radius: 4px;
+  box-shadow: inset 0 0 16px #02060e90;
+  font: 13px/1.65 var(--mono);
+  letter-spacing: 0;
+}
+.reader .reader-log-terminal .reader-tabs {
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  background: #101c2a;
+}
+.reader .reader-log-terminal .reader-tabs button {
+  min-height: 30px;
+  margin: 0;
+  padding: 4px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+}
+.reader .reader-log-terminal .reader-tabs button[aria-selected="true"] {
+  color: var(--signal);
+  border-bottom-color: var(--signal);
+  background: #172b3f;
+}
+.reader .reader-log-terminal .reader-tabs button:focus-visible { outline-color: var(--signal); }
+.reader-clue-tab-content { display: inline-flex; align-items: center; gap: 6px; }
+.reader .reader-log-terminal .reader-tab-count { color: #321a0e; background: #ffbd76; }
+.reader .reader-log-terminal .reader-tabs .has-new { color: #ffd59f; }
+.reader-tabs .has-new .reader-clue-tab-content { animation: reader-clue-arrival .6s ease-in-out; }
+@keyframes reader-clue-arrival {
+  0%, 100% { transform: translateX(0); }
+  12%, 36%, 60% { transform: translateX(-5px); }
+  24%, 48%, 72% { transform: translateX(5px); }
+  84% { transform: translateX(-2px); }
+}
+.reader .reader-log-terminal .reader-scroll {
+  padding: 8px 11px;
+  background: none;
+  scrollbar-color: #385a7a #101a26;
+}
+.reader .reader-log-terminal p { max-width: none; text-indent: 0; }
+.reader .reader-log-terminal .reader-story-log { padding: 4px 0; }
+.reader-record-row {
+  --record-rule: #29445f;
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr);
+  column-gap: 8px;
+  min-height: var(--rule);
+  line-height: var(--rule);
+}
+.reader-record-row.is-current { background: #14283c; }
+.reader-record-number {
+  color: #789bb9;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.reader-record-content {
+  min-width: 0;
+  padding: 0 10px 0 13px;
+  border-left: 1px solid var(--record-rule);
+  background: linear-gradient(to right, transparent 5px, #29445f80 5px 6px, transparent 6px);
+}
+.reader-record-content p { overflow-wrap: anywhere; }
+.reader-record-content img { max-width: 100%; }
+.reader-record-keyword { color: #c0b5ff; }
+.reader-record-numeric { color: #8acbed; }
+.reader-record-quote { color: #efcb88; }
+.reader-record-suffix { padding-left: .4em; color: #d1aadc; user-select: none; }
+.reader .reader-log-terminal .reader-clue-no,
+.reader .reader-log-terminal .reader-clue-line { color: #7cbfff; }
+.reader .reader-log-terminal .reader-ending { color: var(--signal); font-size: 1em; }
+.reader .reader-log-terminal .reader-paper-footer {
+  min-height: 30px;
+  padding: 3px 9px;
+  border-color: var(--line);
+  background: #101c2a;
+}
+.reader .reader-log-terminal .reader-status { color: var(--muted); font-size: 12px; }
+.reader .reader-log-terminal .reader-status.is-open { color: var(--signal); background: #1e3b57; }
+.reader .reader-log-terminal .reader-skip {
+  min-height: 24px;
+  padding: 2px 7px;
+  color: #c0e1ff;
+  background: #172b3f;
+  border: 1px solid #456580;
+  font: 12px/1.4 var(--mono);
+}
+.reader-log-prompt { display: flex; align-items: center; gap: 6px; color: #9bd5ff; }
+.reader .reader-log-terminal .reader-caret {
+  width: .58em;
+  height: .95em;
+  background: var(--signal);
+  animation: reader-log-blink 1s steps(1, end) infinite;
+}
+.reader .reader-log-terminal .reader-ink { animation-name: reader-log-type; }
+@keyframes reader-log-blink { 50% { opacity: 0; } }
+@keyframes reader-log-type { from { color: #eff8ff; } }
+@media (prefers-reduced-motion: reduce) {
+  .reader .reader-log-terminal :is(.reader-caret, .reader-ink) { animation: none; }
+  .reader-tabs .has-new .reader-clue-tab-content { animation: none; }
+}
