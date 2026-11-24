@@ -106,7 +106,7 @@
 .window-controls button:focus-visible {outline:1px dotted #111;outline-offset:-4px;}
 .window-controls svg {width:13px;height:13px;stroke-width:2.5;}
 .draggable{touch-action:none;cursor:move;user-select:none;}.intercept{flex:1;min-height:0;position:relative;overflow:hidden;background:#122116;}
-.camera-image{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}.intercept:after,.reader-feed:has(.camera-image):after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#03100432 3px 4px),linear-gradient(0deg,transparent 40%,#b8dbb31a 48%,transparent 52%);background-size:auto,100% 190%;animation:scan 9s linear infinite;}
+.camera-image{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}.intercept:after,.reader-feed:has(.camera-image):not(.has-camera-wall):after,.camera-wall-tile:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#03100432 3px 4px),linear-gradient(0deg,transparent 40%,#b8dbb31a 48%,transparent 52%);background-size:auto,100% 190%;animation:scan 9s linear infinite;}
 @keyframes scan{to{background-position:0 0,0 190%;}}
 .cam-caption,.cam-location{position:absolute;left:4%;color:#dbe4b6;text-shadow:2px 2px #17281a;letter-spacing:.12em}.cam-caption{top:6%}.cam-caption b{color:#e4bb89}.cam-location{bottom:6%;font-size:18px;}
 .os-monitor .reader{height:auto;flex:1;min-height:0;padding:10px;}.os-monitor .reader-layout{gap:10px;}.reader-feed:has(.camera-image){flex:1;min-height:0;}.reader-feed .camera-image{height:100%;max-height:none;object-fit:cover;object-position:50% 88%;}
@@ -174,4 +174,4 @@
 .os-taskbar button {min-height:25px;padding:0 6px;white-space:nowrap;}
 .taskbar-tray {padding:0 5px;border:1px inset var(--panel);min-height:25px;white-space:nowrap;}
 @media(max-width:650px){.shortcuts{display:flex;right:4px;top:1px;gap:0}.shortcuts button{width:68px;padding:1px;font-size:12px}.icon-frame{height:29px;width:32px}.icon-frame svg{height:20px}.os-monitor{top:62px;left:2%;width:96%;height:calc(100dvh - 106px)}.utility{left:5%}.window-status{display:none}.window-controls button{width:30px}.os-taskbar button{gap:3px;padding-inline:3px;font-size:12px}}
-@media(prefers-reduced-motion:reduce){.intercept:after,.reader-feed:has(.camera-image):after{animation:none}}
+@media(prefers-reduced-motion:reduce){.intercept:after,.reader-feed:has(.camera-image):after,.camera-wall-tile:after{animation:none}}

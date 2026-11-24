@@ -16,6 +16,7 @@
   cursor: pointer;
 }
 .night-monitor-shortcut .icon-frame { width: 58px; height: 54px; margin: 0; }
+.night-monitor-shortcut small { font-size: 12px; }
 .night-monitor-shortcut:is(:hover, :focus-visible) { background: #d4f0ff25; border-color: #d4f0ff65; }
 .desktop-shift-date { padding-inline-end: 3px; color: #cfe9ff; font-size: 11px; }
 
@@ -47,6 +48,7 @@
 .monitor-login input:focus-visible { outline: 2px solid #3674a4; outline-offset: 1px; }
 .monitor-login .assist { margin-top: 14px; justify-self: center; min-width: 84px; }
 .monitor-login #monitor-login-error { margin: 6px 0 0; color: #8b222b; font-size: 13px; }
+.monitor-login #monitor-login-mail { margin: 6px 0 0; color: #2b4964; font-size: 13px; }
 
 .os-glass-preview .utility[data-night-app="inbox"]:not(.is-maximized) {
   left: max(12px, calc(50% - 370px));

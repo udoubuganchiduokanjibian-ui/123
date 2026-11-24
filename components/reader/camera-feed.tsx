@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   CAMERA_HEIGHT, CAMERA_WIDTH, drawFigure, drawFlashlight, drawInterference, drawShell, figureScale, guard,
@@ -125,11 +125,12 @@ function hitsActor(actor: Actor, x: number, y: number) {
   return Math.abs(x - actor.x) <= 8 * scale && y <= actor.y + 3 && y >= actor.y - 36 * scale;
 }
 
-export function CameraFeed({ sceneId, eventIds = [], reply, whitePinAtEntrance = false }: {
+export function CameraFeed({ sceneId, eventIds = [], reply, whitePinAtEntrance = false, surfaceRef }: {
   sceneId: string;
   whitePinAtEntrance?: boolean;
   eventIds?: readonly string[];
   reply?: { id: number; text: string };
+  surfaceRef?: RefObject<HTMLCanvasElement | null>;
 }) {
   const bubble = useRef<HTMLDivElement>(null);
   const speech = useRef<Speech | null>(null);
@@ -143,7 +144,8 @@ export function CameraFeed({ sceneId, eventIds = [], reply, whitePinAtEntrance =
     speech.current = { text: firstSentence(reply.text), shown: 0, nextAt: performance.now() + 300, holdUntil: 0 };
   }, [reply]);
 
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const localCanvas = useRef<HTMLCanvasElement>(null);
+  const canvas = surfaceRef ?? localCanvas;
   const room = useRef<{ scene: string; image: HTMLCanvasElement } | null>(null);
   const qu = useRef<Actor>(newActor());
   const hei = useRef<Actor>(newActor());
@@ -299,7 +301,7 @@ export function CameraFeed({ sceneId, eventIds = [], reply, whitePinAtEntrance =
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [scene, sceneId, whitePinAtEntrance]);
+  }, [canvas, scene, sceneId, whitePinAtEntrance]);
 
   // Clicking the protagonist makes him take a few steps away and come back.
   const stroll = (event: PointerEvent<HTMLCanvasElement>) => {

@@ -118,7 +118,7 @@ export const staging: Record<string, SceneStaging> = {
       e035: { qu: { at: s4.lab, pose: "crouch" }, hei: { at: [90, 124] } },
       e036: { qu: { at: s4.storeroom, exit: true }, hei: { at: [188, 124] } },
       e037: { qu: { at: [120, 106] }, hei: { at: [258, 128] } },
-      e038: { qu: { at: offRight, run: true, exit: true }, hei: { at: [230, 124], run: true } },
+      e038: { qu: { at: [275, 124], run: true }, hei: { at: [253, 117], run: true } },
       e039: { qu: { at: [176, 122], pose: "knife" }, hei: { at: s4.heiStand } },
       e040: { qu: { at: [142, 122], pose: "knife", run: true }, hei: { at: [126, 121] } },
       e041: { qu: { at: [258, 125] }, hei: { at: s4.heiStand } },

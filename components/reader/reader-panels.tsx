@@ -104,7 +104,7 @@ function useFollow(dependency: unknown) {
   return { log, onScroll };
 }
 
-export function ScenePanel({ scene, sceneId, eventIds, reply, story, logKey, status, onLogComplete, error, onExit }: {
+export function ScenePanel({ scene, sceneId, eventIds, reply, story, logKey, status, onLogComplete, error, onExit, onRestart }: {
   reply?: { id: number; text: string };
   scene?: string;
   sceneId?: string;
@@ -114,6 +114,7 @@ export function ScenePanel({ scene, sceneId, eventIds, reply, story, logKey, sta
   status: string;
   onLogComplete: (key: string) => void;
   onExit?: () => void;
+  onRestart?: () => void;
   error?: ReactNode;
 }) {
   const { lines, clues: clueMarkers } = toStoryLog(story);
@@ -219,9 +220,10 @@ export function ScenePanel({ scene, sceneId, eventIds, reply, story, logKey, sta
           </div>}
           {error}
         </div>
-        {tab === "story" && (status || typing) && <footer className="reader-paper-footer">
+        {((tab === "story" && (status || typing)) || onRestart) && <footer className="reader-paper-footer">
           <span className="reader-status" role="status">{status}</span>
-          {typing && <button type="button" className="reader-skip" onClick={skip}>显示全部</button>}
+          {tab === "story" && typing && <button type="button" className="reader-skip" onClick={skip}>显示全部</button>}
+          {onRestart && <button type="button" className="reader-skip" onClick={onRestart}>重新开始</button>}
         </footer>}
       </article>
     </section>

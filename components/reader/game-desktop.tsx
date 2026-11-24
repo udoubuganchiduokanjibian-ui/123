@@ -238,6 +238,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   const [alarming, setAlarming] = useState(false);
   const [refusalCount, setRefusalCount] = useState(0);
   const stopMailChime = useRef<(() => void) | undefined>(undefined);
+  const openMonitorAfterFault = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishStory = useCallback(() => setFinished(true), []);
@@ -253,6 +254,8 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     : Number(!read);
   const shiftDate = nightDesktop && openedOn ? newsDateFormat.format(previousWeek(openedOn)) : undefined;
   const openingNews = glassPreview && phase === "desktop";
+  const showMonitorHint = (openingNews && !windows.some(window => window.id === "browser" && !window.minimized))
+    || (nightDesktop && intro === "locked");
   const terminal = windows.find(window => window.id === "terminal");
   const foreground = windows.findLast(window => !window.minimized)?.id;
   const waitingForAnswer = intro === "mail" && readNightMail.includes("stranger");
@@ -283,6 +286,12 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       return [...current.filter(window => window.id !== id), { ...existing, id, minimized: false }];
     });
   }, []);
+
+  const requestNightMail = useCallback(() => {
+    if (intro !== "locked") return;
+    setIntro("mail");
+    stopMailChime.current = playMailArrival(0);
+  }, [intro]);
 
   function updateWindow(id: WindowId, changes: Partial<Omit<DesktopWindow, "id">>) {
     setWindows(current => current.map(window => window.id === id ? { ...window, ...changes } : window));
@@ -317,11 +326,15 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
         setPhase("fault");
       } else {
         setPhase("online");
-        if (!glassPreview) focusWindow("terminal");
+        if (openMonitorAfterFault.current) {
+          openMonitorAfterFault.current = false;
+          focusWindow("monitor");
+          requestNightMail();
+        } else if (!glassPreview) focusWindow("terminal");
       }
     }, phase === "frozen" ? frozenDuration : faultDuration);
     return () => clearTimeout(timer);
-  }, [phase, glassPreview, focusWindow]);
+  }, [phase, glassPreview, focusWindow, requestNightMail]);
 
   // Sound starts with the first click anywhere, as browsers require.
   useEffect(initAudio, []);
@@ -335,17 +348,14 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   function launch(id: App) {
     if (phase === "desktop" && (glassPreview || id !== "browser")) {
       if (openingNews) dismissWindow("browser");
+      openMonitorAfterFault.current = glassPreview && id === "monitor";
       if (!glassPreview) stopMailChime.current = playMailArrival(frozenDuration + faultDuration);
       setPhase("frozen");
       return;
     }
     if (phase !== "online" && !(phase === "desktop" && id === "browser")) return;
+    if (nightDesktop && id === "monitor") requestNightMail();
     focusWindow(id === "monitor" && monitorReady ? "terminal" : id);
-  }
-  function requestNightMail() {
-    if (intro !== "locked") return;
-    setIntro("mail");
-    stopMailChime.current = playMailArrival(0);
   }
   function selectNightMail(id: NightMailId) {
     setSelectedMail(id);
@@ -416,8 +426,10 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       </button>;
     })}</nav>
     {phase === "fault" && <SignalSnow />}
-    {nightDesktop && <button type="button" className="night-monitor-shortcut" onClick={() => launch("monitor")}>
+    {(nightDesktop || showMonitorHint) && <button type="button" className="night-monitor-shortcut"
+      aria-label="监控" aria-describedby={showMonitorHint ? "night-monitor-hint" : undefined} onClick={() => launch("monitor")}>
       <span className="icon-frame"><Camera aria-hidden="true" /></span>监控
+      {showMonitorHint && <small id="night-monitor-hint">打开监控，查看值班信号</small>}
     </button>}
     {monitorReady && <section className={"os-monitor os-window" + (terminal?.maximized ? " is-maximized" : "")}
       aria-label="监控终端" hidden={!terminal || terminal.minimized}
@@ -473,8 +485,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
           onClose={() => dismissWindow(app)} />
       </header>
       {app === "browser" ? <BrowserPage openingNews={openingNews} openedOn={openedOn} active={foreground === "browser" && !alarming} />
-      : nightDesktop && app === "monitor" ? <MonitorLogin accepted={intro === "accepted"}
-        onPasswordFocus={requestNightMail} onUnlock={unlockMonitor} />
+      : nightDesktop && app === "monitor" ? <MonitorLogin accepted={intro === "accepted"} onUnlock={unlockMonitor} />
       : nightDesktop && app === "inbox" ? <NightInbox delivered={intro !== "locked"}
         read={readNightMail} selected={selectedMail} accepted={intro === "accepted" || intro === "unlocked"}
         onSelect={selectNightMail} onAccept={acceptNightMail} onRefuse={() => setAlarming(true)} />

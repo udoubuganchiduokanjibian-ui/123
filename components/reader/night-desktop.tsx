@@ -69,9 +69,8 @@ export function NightInbox({ delivered, read, selected, accepted, onSelect, onAc
   </div>;
 }
 
-export function MonitorLogin({ accepted, onPasswordFocus, onUnlock }: {
+export function MonitorLogin({ accepted, onUnlock }: {
   accepted: boolean;
-  onPasswordFocus: () => void;
   onUnlock: () => void;
 }) {
   const [password, setPassword] = useState("");
@@ -90,14 +89,15 @@ export function MonitorLogin({ accepted, onPasswordFocus, onUnlock }: {
   }}>
     <label htmlFor="monitor-password">输入密码</label>
     <input id="monitor-password" type="password" inputMode="numeric" autoComplete="off" required maxLength={6}
-      value={password} onFocus={onPasswordFocus} aria-invalid={!!error}
-      aria-describedby={error ? "monitor-login-error" : undefined}
+      value={password} aria-invalid={!!error}
+      aria-describedby={error ? "monitor-login-error" : accepted ? undefined : "monitor-login-mail"}
       onChange={event => {
         playTypeKey();
         setPassword(event.currentTarget.value);
         setError("");
       }} />
     {error && <p id="monitor-login-error" role="alert">{error}</p>}
+    {!accepted && <p id="monitor-login-mail">请先查看收件箱里的值班邮件。</p>}
     <button type="submit" className="assist">确定</button>
   </form>;
 }

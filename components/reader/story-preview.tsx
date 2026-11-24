@@ -152,6 +152,7 @@ export function StoryPreview({ onComplete, onExit }: { onComplete?: () => void; 
           status={status}
           onLogComplete={setFinishedLog}
           onExit={onExit}
+          onRestart={visibleView?.mode === "completed" && logComplete ? () => window.location.reload() : undefined}
           error={failure && (
             <div className="mt-4">
               <p className="reader-fault" role="alert">{failure.message}</p>
