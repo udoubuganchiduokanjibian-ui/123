@@ -102,14 +102,6 @@
   background: linear-gradient(180deg, #a8d9fa70 0%, #5296c16b 44%, #153b61a6 50%, #387fae80 100%);
   box-shadow: inset 0 1px #ccecff60, 0 1px #132f50;
 }
-.taskbar-search {
-  width: clamp(100px, 14vw, 173px);
-  justify-content: flex-start;
-  background-color: #163a5773;
-  box-shadow: inset 0 1px 3px #112e4d80;
-  font: 12px/1 Tahoma, "Microsoft YaHei", sans-serif;
-  white-space: nowrap;
-}
 .desktop-clock { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .os-glass-preview .os-taskbar :is(.taskbar-windows > button, .taskbar-tray > button, .taskbar-launchers > button, .desktop-clock-wrap > button) {
   border: 1px solid #a7d6eb88;
@@ -452,7 +444,6 @@
 }
 @media (max-width: 430px) {
   .taskbar-launchers .taskbar-static:last-child { display: none; }
-  .taskbar-search { width: 104px; }
   .os-glass-preview .taskbar-tray { font-size: 11px; }
 }
 

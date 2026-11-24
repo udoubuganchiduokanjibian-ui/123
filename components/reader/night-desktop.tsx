@@ -8,7 +8,7 @@ import "./night-desktop.css";
 const dutyPassword = "060427";
 
 const inboxMessages = [
-  { id: "stranger", sender: "陌生人", address: "unknown@relay.invalid", subject: "你只有今晚", time: "21:30", body: "你现在在一周前。今晚曲别针会来拿走那份记录。你一定要协助他找出真相。否则，你会死。" },
+  { id: "stranger", sender: "陌生人", address: "unknown@relay.invalid", subject: "你只有今晚", time: "21:30", body: "你现在在一周前。今晚曲别针会来拿走那份记录。你一定要协助他找出真相。" },
   { id: "doctor", sender: "张博士", address: "zhang@research.invalid", subject: "今晚值班", time: "21:29", body: "今天晚上你守夜，好好看着监控，知道你健忘，密码就在文件里，千万别放人溜进来。" },
   { id: "ad", sender: "好物精选", address: "offers@market.invalid", subject: "您的专属优惠即将到期", time: "昨天", body: "本周办公用品限时优惠。本邮件由系统自动发送。" },
   { id: "digest", sender: "实验室订阅", address: "digest@research.invalid", subject: "本周实验室简报", time: "星期一", body: "设备维护和例行检查均已完成。详细安排请查看部门公告。" },
@@ -58,7 +58,7 @@ export function NightInbox({ delivered, read, selected, accepted, onSelect, onAc
         <div className="night-inbox-from"><strong>{message.sender}</strong> <span>&lt;{message.address}&gt;</span></div>
         <p>{message.id === "doctor"
           ? <>今天晚上你守夜，好好看着监控，知道你健忘，<strong><em>密码就在文件里</em></strong>，千万别放人溜进来。</>
-          : message.body}</p>
+          : message.body}{message.id === "stranger" && <strong className="night-mail-warning">否则，你会死。</strong>}</p>
         {message.id === "stranger" && (accepted ? <small role="status">已接受协助请求</small> :
           <div className="assist-actions">
             <button type="button" className="assist-decline" onClick={onRefuse}>拒绝</button>
@@ -130,5 +130,19 @@ export function RefusalAlarm({ onAccept }: { onAccept: () => void }) {
     <h2 id="duty-alarm-title">协助请求已拒绝</h2>
     <p>连接中断。接受协助请求以解除警报。</p>
     <button type="button" onClick={onAccept}>接受</button>
+  </dialog>;
+}
+
+export function DutyTimeNotice({ onDismiss }: { onDismiss: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const layer = dialog.current;
+    layer?.showModal();
+    return () => layer?.close();
+  }, []);
+  return <dialog ref={dialog} className="duty-time-notice" aria-labelledby="duty-time-notice-message"
+    onCancel={event => { event.preventDefault(); onDismiss(); }}>
+    <p id="duty-time-notice-message">你只有三个小时的时间，请好好留意和利用时间</p>
+    <button type="button" className="assist" autoFocus onClick={onDismiss}>确定</button>
   </dialog>;
 }

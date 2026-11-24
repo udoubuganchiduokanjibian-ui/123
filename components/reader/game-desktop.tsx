@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Monitor, Mail, Radio, X, FolderClosed, Minus, Square, Copy, Search, Globe, Calculator, Volume2, VolumeX, Camera } from "lucide-react";
+import { Monitor, Mail, X, FolderClosed, Minus, Square, Copy, Search, Globe, Calculator, Volume2, VolumeX, Camera } from "lucide-react";
 import { CameraRecording } from "./study-feed";
 import { StoryPreview } from "./story-preview";
 import { CameraFeed, useShiftClock } from "./camera-feed";
 import { getAudioVolume, initAudio, isMuted, onMutedChange, playMailArrival, setAudioVolume, setMuted } from "../../lib/reader/audio";
-import { DutyFiles, DutyNote, MonitorLogin, newNightMail, NightInbox, RefusalAlarm, type NightMailId } from "./night-desktop";
+import { DutyFiles, DutyNote, DutyTimeNotice, MonitorLogin, newNightMail, NightInbox, RefusalAlarm, type NightMailId } from "./night-desktop";
 import { ArchiveRunner } from "./archive-runner";
 import "./desktop.css";
 import "./desktop-glass-preview.css";
@@ -236,6 +236,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   const [selectedMail, setSelectedMail] = useState<NightMailId>();
   const [readNightMail, setReadNightMail] = useState<NightMailId[]>([]);
   const [alarming, setAlarming] = useState(false);
+  const [showTimeNotice, setShowTimeNotice] = useState(false);
   const [refusalCount, setRefusalCount] = useState(0);
   const stopMailChime = useRef<(() => void) | undefined>(undefined);
   const openMonitorAfterFault = useRef(false);
@@ -254,8 +255,8 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     : Number(!read);
   const shiftDate = nightDesktop && openedOn ? newsDateFormat.format(previousWeek(openedOn)) : undefined;
   const openingNews = glassPreview && phase === "desktop";
-  const showMonitorHint = (openingNews && !windows.some(window => window.id === "browser" && !window.minimized))
-    || (nightDesktop && intro === "locked");
+  const showMonitorShortcut = nightDesktop
+    || (openingNews && !windows.some(window => window.id === "browser" && !window.minimized));
   const terminal = windows.find(window => window.id === "terminal");
   const foreground = windows.findLast(window => !window.minimized)?.id;
   const waitingForAnswer = intro === "mail" && readNightMail.includes("stranger");
@@ -309,7 +310,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   }, [waitingForAnswer, focusWindow]);
 
   useEffect(() => {
-    if (!foreground || alarming) return;
+    if (!foreground || alarming || showTimeNotice) return;
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key !== "Escape" || event.defaultPrevented || !foreground) return;
       event.preventDefault();
@@ -317,7 +318,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [foreground, alarming, dismissWindow]);
+  }, [foreground, alarming, showTimeNotice, dismissWindow]);
 
   useEffect(() => {
     if (phase !== "frozen" && phase !== "fault") return;
@@ -370,6 +371,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   function acceptNightMail() {
     setAlarming(false);
     setIntro("accepted");
+    setShowTimeNotice(true);
   }
   function unlockMonitor() {
     setIntro("unlocked");
@@ -426,10 +428,8 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       </button>;
     })}</nav>
     {phase === "fault" && <SignalSnow />}
-    {(nightDesktop || showMonitorHint) && <button type="button" className="night-monitor-shortcut"
-      aria-label="监控" aria-describedby={showMonitorHint ? "night-monitor-hint" : undefined} onClick={() => launch("monitor")}>
+    {showMonitorShortcut && <button type="button" className="night-monitor-shortcut" onClick={() => launch("monitor")}>
       <span className="icon-frame"><Camera aria-hidden="true" /></span>监控
-      {showMonitorHint && <small id="night-monitor-hint">打开监控，查看值班信号</small>}
     </button>}
     {monitorReady && <section className={"os-monitor os-window" + (terminal?.maximized ? " is-maximized" : "")}
       aria-label="监控终端" hidden={!terminal || terminal.minimized}
@@ -438,7 +438,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       <header className={terminal?.maximized ? "window-bar" : "window-bar draggable"}
         onPointerDown={terminal?.maximized ? undefined : e => startDrag(e, "terminal")}
         onPointerMove={move} onLostPointerCapture={endDrag}>
-        <span><Radio size={16}/> 监控终端</span>
+        <span>监控终端</span>
         <div className="window-actions">
           <WindowControls maximized={!!terminal?.maximized}
             onMinimize={() => dismissWindow("terminal", true)}
@@ -453,7 +453,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
           <div className="reader-feed-identity"><span>CAM / 00</span><CameraRecording /></div>
         </div>
         <div className="cam-location">研究中心正门</div>
-        {nightDesktop && <button type="button" className="assist night-enter-story" onClick={connectMonitor}>接入调查</button>}
+        {nightDesktop && <button type="button" className="assist night-enter-story" onClick={connectMonitor}>进入中控</button>}
       </div>}
     </section>}
     {refusalCount > 0 && <div className="connection-errors">
@@ -484,7 +484,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
           onMaximize={() => updateWindow(app, { maximized: !window.maximized })}
           onClose={() => dismissWindow(app)} />
       </header>
-      {app === "browser" ? <BrowserPage openingNews={openingNews} openedOn={openedOn} active={foreground === "browser" && !alarming} />
+      {app === "browser" ? <BrowserPage openingNews={openingNews} openedOn={openedOn} active={foreground === "browser" && !alarming && !showTimeNotice} />
       : nightDesktop && app === "monitor" ? <MonitorLogin accepted={intro === "accepted"} onUnlock={unlockMonitor} />
       : nightDesktop && app === "inbox" ? <NightInbox delivered={intro !== "locked"}
         read={readNightMail} selected={selectedMail} accepted={intro === "accepted" || intro === "unlocked"}
@@ -514,7 +514,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     <footer className="os-taskbar">
       {glassPreview && <div className="taskbar-launchers">
         <span aria-hidden="true" className="taskbar-static taskbar-computer" title="电脑"><Monitor size={17}/></span>
-        <span aria-hidden="true" className="taskbar-static taskbar-search"><Search size={13}/> 搜索程序和文件</span>
+        <span aria-hidden="true" className="taskbar-static"><Search size={14}/></span>
         <span aria-hidden="true" className="taskbar-static" title="文件资源管理器"><FolderClosed size={16}/></span>
         <button type="button" className="taskbar-static taskbar-browser taskbar-action" aria-label="打开浏览器" title="浏览器"
           disabled={phase === "frozen" || phase === "fault"} onClick={() => launch("browser")}><Globe size={16}/></button>
@@ -534,5 +534,6 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       </div>
     </footer>
     {alarming && <RefusalAlarm onAccept={acceptNightMail} />}
+    {showTimeNotice && <DutyTimeNotice onDismiss={() => setShowTimeNotice(false)} />}
   </div>;
 }

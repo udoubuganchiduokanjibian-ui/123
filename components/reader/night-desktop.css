@@ -16,7 +16,6 @@
   cursor: pointer;
 }
 .night-monitor-shortcut .icon-frame { width: 58px; height: 54px; margin: 0; }
-.night-monitor-shortcut small { font-size: 12px; }
 .night-monitor-shortcut:is(:hover, :focus-visible) { background: #d4f0ff25; border-color: #d4f0ff65; }
 .desktop-shift-date { padding-inline-end: 3px; color: #cfe9ff; font-size: 11px; }
 
@@ -106,6 +105,7 @@
 .night-inbox-from { padding-bottom: 10px; border-bottom: 1px solid #d5dfe8; font-size: 13px; }
 .night-inbox-from span, .night-inbox-empty { color: #536b82; }
 .night-inbox-detail .assist-actions { justify-content: flex-start; }
+.night-mail-warning { color: #a51420; }
 .os-glass-preview .utility[data-night-app="files"]:not(.is-maximized) {
   left: clamp(12px, 11vw, 170px);
   width: min(620px, calc(100% - 24px));
@@ -167,8 +167,21 @@
 }
 .duty-alarm button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
+.duty-time-notice {
+  width: min(390px, calc(100% - 32px));
+  margin: auto;
+  padding: 22px 24px 18px;
+  border: 1px solid #587d9e;
+  border-radius: 6px;
+  color: #152f49;
+  background: linear-gradient(150deg, #f1f7fd, #d6e5f2);
+  box-shadow: 0 8px 28px #10284275;
+  text-align: center;
+}
+.duty-time-notice::backdrop { background: #101e3355; }
+.duty-time-notice p { margin: 0 0 16px; line-height: 1.6; }
+
 @media (max-width: 540px) {
-  .phase-online .taskbar-search { display: none; }
   .desktop-shift-date { display: none; }
   .night-inbox { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 43%) minmax(0, 1fr); }
   .night-inbox-list { border-inline-end: 0; border-bottom: 1px solid #b8c9d9; }
