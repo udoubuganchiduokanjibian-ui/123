@@ -13,6 +13,7 @@ export const storyPackManifestSchema = z.strictObject({
   id: idSchema,
   title: textSchema,
   entrySceneId: idSchema,
+  firstInterventionLine: textSchema.optional(),
   character: storyCharacterSchema,
 });
 

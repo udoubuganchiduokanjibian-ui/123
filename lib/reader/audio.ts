@@ -1,14 +1,19 @@
 // All sound is synthesised in the browser: a dark ambient score and positional footsteps.
 // Browsers only allow audio after a click, so the context starts on the first pointer press.
 
+import { repeatMailChime } from "./mail-chime";
+
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
+let effectsMix: GainNode | null = null;
 let reverb: ConvolverNode | null = null;
 let muted = false;
+let volume: number | undefined;
 let scoreStarted = false;
 const listeners = new Set<(muted: boolean) => void>();
 
 const MUTE_KEY = "reader-sound-muted";
+const VOLUME_KEY = "reader-sound-volume";
 
 function readMuted() {
   try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
@@ -45,24 +50,26 @@ function ensureContext() {
   if (!Ctor) return null;
   context = new Ctor();
   master = context.createGain();
-  master.gain.value = muted ? 0 : 1;
+  master.gain.value = muted ? 0 : getAudioVolume() / 100;
   master.connect(context.destination);
+  effectsMix = context.createGain();
+  effectsMix.connect(master);
   reverb = makeReverb(context);
   const wet = context.createGain();
   wet.gain.value = 0.55;
-  reverb.connect(wet).connect(master);
+  reverb.connect(wet).connect(effectsMix);
   return context;
 }
 
 // ---- Score ---------------------------------------------------------------------------------
 
 function startScore(ctx: AudioContext) {
-  if (scoreStarted || !master || !reverb) return;
+  if (scoreStarted || !effectsMix || !reverb) return;
   scoreStarted = true;
   const score = ctx.createGain();
   score.gain.value = 0;
   score.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 3); // fade in
-  score.connect(master);
+  score.connect(effectsMix);
 
   // Drone: two low, slightly detuned tones under a slowly breathing low-pass filter.
   const droneFilter = ctx.createBiquadFilter();
@@ -168,6 +175,7 @@ function startScore(ctx: AudioContext) {
 export function initAudio() {
   if (typeof window === "undefined") return;
   muted = readMuted();
+  listeners.forEach(listener => listener(muted));
   // Every click or key press wakes the audio again, in case the browser suspended it.
   const start = () => {
     const ctx = ensureContext();
@@ -177,15 +185,91 @@ export function initAudio() {
   };
   window.addEventListener("pointerdown", start);
   window.addEventListener("keydown", start);
+  return () => {
+    window.removeEventListener("pointerdown", start);
+    window.removeEventListener("keydown", start);
+  };
 }
 
 export function isMuted() { return muted; }
 
+export function getAudioVolume() {
+  if (volume !== undefined) return volume;
+  try {
+    const saved = localStorage.getItem(VOLUME_KEY);
+    const level = saved === null ? 100 : Number(saved);
+    volume = Number.isFinite(level) ? Math.max(0, Math.min(100, level)) : 100;
+  } catch {
+    return 100;
+  }
+  return volume;
+}
+
+function updateOutputLevel() {
+  const level = muted ? 0 : getAudioVolume() / 100;
+  if (context && master) master.gain.setTargetAtTime(level, context.currentTime, 0.04);
+  if (level === 0 && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+export function setAudioVolume(next: number) {
+  if (!Number.isFinite(next)) return;
+  volume = Math.max(0, Math.min(100, next));
+  try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch { /* storage unavailable */ }
+  updateOutputLevel();
+}
+
+export function playRefusalAlarm() {
+  const ctx = ensureContext();
+  if (!ctx || !master || !effectsMix) return;
+  const mix = effectsMix;
+  void ctx.resume().catch(() => {});
+
+  const siren = ctx.createOscillator();
+  const sweep = ctx.createOscillator();
+  const depth = ctx.createGain();
+  const level = ctx.createGain();
+  siren.type = "triangle";
+  siren.frequency.value = 1120;
+  sweep.type = "triangle";
+  sweep.frequency.value = 2.25;
+  depth.gain.value = 280;
+  level.gain.setValueAtTime(0, ctx.currentTime);
+  level.gain.setTargetAtTime(0.29, ctx.currentTime, 0.015);
+  mix.gain.setTargetAtTime(0.13, ctx.currentTime, 0.025);
+  sweep.connect(depth).connect(siren.frequency);
+  siren.connect(level).connect(master);
+  siren.start();
+  sweep.start();
+  return () => {
+    const end = ctx.currentTime + 0.06;
+    level.gain.setTargetAtTime(0, ctx.currentTime, 0.012);
+    mix.gain.setTargetAtTime(1, end, 0.09);
+    siren.stop(end);
+    sweep.stop(end);
+    siren.onended = () => {
+      sweep.disconnect();
+      depth.disconnect();
+      siren.disconnect();
+      level.disconnect();
+    };
+  };
+}
+
+export function playMailArrival(delayMs: number) {
+  try {
+    const ctx = ensureContext();
+    if (!ctx || !effectsMix) return;
+    void ctx.resume().catch(() => {});
+    return repeatMailChime(ctx, effectsMix, delayMs);
+  } catch {
+    // The visual alert still works when audio is unavailable.
+  }
+}
+
 export function setMuted(next: boolean) {
   muted = next;
   try { localStorage.setItem(MUTE_KEY, next ? "1" : "0"); } catch { /* storage unavailable */ }
-  if (context && master) master.gain.setTargetAtTime(next ? 0 : 1, context.currentTime, 0.1);
-  if (next && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  updateOutputLevel();
   listeners.forEach(listener => listener(next));
 }
 
@@ -203,20 +287,22 @@ function chineseVoice() {
 
 export function speakLine(text: string) {
   if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const level = getAudioVolume();
+  if (level === 0) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "zh-CN";
   const voice = chineseVoice();
   if (voice) utterance.voice = voice;
   utterance.rate = 0.92;
   utterance.pitch = 0.7;
-  utterance.volume = 0.9;
+  utterance.volume = 0.9 * level / 100;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
 
 // One typewriter key strike: a bright click on top of a soft wooden thunk.
 export function playTypeKey() {
-  if (!context || !master || muted || context.state !== "running") return;
+  if (!context || !effectsMix || muted || context.state !== "running") return;
   const ctx = context;
   const when = ctx.currentTime;
   const click = ctx.createBufferSource();
@@ -228,7 +314,7 @@ export function playTypeKey() {
   const clickGain = ctx.createGain();
   clickGain.gain.setValueAtTime(0.18 + Math.random() * 0.06, when);
   clickGain.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
-  click.connect(clickFilter).connect(clickGain).connect(master);
+  click.connect(clickFilter).connect(clickGain).connect(effectsMix);
   click.start(when);
   const thunk = ctx.createOscillator();
   thunk.frequency.setValueAtTime(140, when);
@@ -236,14 +322,14 @@ export function playTypeKey() {
   const thunkGain = ctx.createGain();
   thunkGain.gain.setValueAtTime(0.06, when);
   thunkGain.gain.exponentialRampToValueAtTime(0.001, when + 0.06);
-  thunk.connect(thunkGain).connect(master);
+  thunk.connect(thunkGain).connect(effectsMix);
   thunk.start(when);
   thunk.stop(when + 0.07);
 }
 
 // One footfall. `pan` is -1 (left) to 1 (right); `level` grows as the walker nears the camera.
 export function playFootstep({ pan, level, heavy }: { pan: number; level: number; heavy: boolean }) {
-  if (!context || !master || muted || context.state !== "running") return;
+  if (!context || !effectsMix || muted || context.state !== "running") return;
   const ctx = context;
   const when = ctx.currentTime;
   const source = ctx.createBufferSource();
@@ -258,7 +344,7 @@ export function playFootstep({ pan, level, heavy }: { pan: number; level: number
   env.gain.exponentialRampToValueAtTime(0.001, when + (heavy ? 0.16 : 0.09));
   const panner = ctx.createStereoPanner();
   panner.pan.value = Math.max(-1, Math.min(1, pan));
-  source.connect(filter).connect(env).connect(panner).connect(master);
+  source.connect(filter).connect(env).connect(panner).connect(effectsMix);
   if (reverb) {
     const send = ctx.createGain();
     send.gain.value = 0.15;

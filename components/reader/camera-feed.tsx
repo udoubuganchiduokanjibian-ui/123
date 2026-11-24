@@ -125,8 +125,9 @@ function hitsActor(actor: Actor, x: number, y: number) {
   return Math.abs(x - actor.x) <= 8 * scale && y <= actor.y + 3 && y >= actor.y - 36 * scale;
 }
 
-export function CameraFeed({ sceneId, eventIds = [], reply }: {
+export function CameraFeed({ sceneId, eventIds = [], reply, whitePinAtEntrance = false }: {
   sceneId: string;
+  whitePinAtEntrance?: boolean;
   eventIds?: readonly string[];
   reply?: { id: number; text: string };
 }) {
@@ -200,7 +201,7 @@ export function CameraFeed({ sceneId, eventIds = [], reply }: {
     const updateSpeech = (now: number) => {
       const el = bubble.current;
       const actor = qu.current;
-      const pool = mutters[sceneId];
+      const pool = whitePinAtEntrance ? undefined : mutters[sceneId];
       if (!speech.current && pool && actor.visible && now > nextMutterAt.current
           && canWander(actor.target, hei.current.visible)) {
         // Never the same line twice in a row.
@@ -262,7 +263,7 @@ export function CameraFeed({ sceneId, eventIds = [], reply }: {
         ctx.drawImage(room.current!.image, 0, 0);
 
         const cast = [
-          { actor: qu.current, walking: walkingQu, look: protagonistLook },
+          { actor: qu.current, walking: walkingQu, look: whitePinAtEntrance ? { ...protagonistLook, wire: 9 } : protagonistLook },
           { actor: hei.current, walking: walkingHei, look: pursuerLook },
         ].filter(({ actor }) => actor.visible).sort((a, b) => a.actor.y - b.actor.y);
         // Idle characters turn toward each other.
@@ -298,7 +299,7 @@ export function CameraFeed({ sceneId, eventIds = [], reply }: {
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [scene, sceneId]);
+  }, [scene, sceneId, whitePinAtEntrance]);
 
   // Clicking the protagonist makes him take a few steps away and come back.
   const stroll = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -323,7 +324,8 @@ export function CameraFeed({ sceneId, eventIds = [], reply }: {
 
   return <>
     <canvas ref={canvas} className="camera-image" width={CAMERA_WIDTH} height={CAMERA_HEIGHT}
-      role="img" aria-label="研究中心监控实时画面" onPointerDown={stroll} onPointerMove={hover} />
+      role="img" aria-label={whitePinAtEntrance ? "白针在研究中心正门的监控画面" : "研究中心监控实时画面"}
+      onPointerDown={whitePinAtEntrance ? undefined : stroll} onPointerMove={whitePinAtEntrance ? undefined : hover} />
     <div ref={bubble} className="camera-bubble" role="status" aria-live="polite" hidden />
   </>;
 }

@@ -17,6 +17,7 @@ type ReaderSession = {
   engine: ReturnType<typeof startSession>;
   title: string;
   character: string;
+  hasFirstInterventionLine: boolean;
   sceneTitles: Map<string, string>;
   idle: boolean;
   busy: boolean;
@@ -29,7 +30,8 @@ const sessionLifetime = 60 * 60 * 1000;
 // Scripted model output for this pack. Engine validation still governs every action and clue.
 const registry = new ProviderRegistry();
 registry.register(createMockProvider("reader-mock", true, ({ messages }) => {
-  const { availableActions, playerInput } = JSON.parse(messages[1].content) as {
+  const { availableActions, playerInput, scene } = JSON.parse(messages[1].content) as {
+    scene: { id: string };
     availableActions: { id: string; description: string }[];
     playerInput: Pick<Danmaku, "id" | "text">[];
   };
@@ -38,7 +40,17 @@ registry.register(createMockProvider("reader-mock", true, ({ messages }) => {
 
   if (availableActions.some(option => !option.id.startsWith("event-"))) {
     const proposedEvents: AgentTurnOutput["proposedEvents"] = [];
+    // Script the archive-room exchange in the offline preview.
+    function reaction(text: string): string | undefined {
+      if (scene.id !== "s01") return;
+      if (/(白针|弟弟).*(死|去世)|(?:死|去世).*(白针|弟弟)/u.test(text) && /设备|操作失误/u.test(text)) return "";
+      if (/真相/u.test(text) && /知道|告诉/u.test(text)) return "你是从谁那儿听来的？";
+    }
+    const reply = reaction(playerInput.at(-1)?.text ?? "");
     const danmakuDecisions = playerInput.map(({ id: danmakuId, text }): AgentTurnOutput["danmakuDecisions"][number] => {
+      if (reaction(text) !== undefined) {
+        return { danmakuId, decision: "defer", reason: "这句话触及白针，但没有提出现场调查。" };
+      }
       // Match short phrases against currently legal actions in the offline provider.
       const terms = Array.from({ length: text.length - 1 }, (_, i) => text.slice(i, i + 2));
       const ranked = availableActions.map(option => ({
@@ -51,7 +63,8 @@ registry.register(createMockProvider("reader-mock", true, ({ messages }) => {
       return { danmakuId, decision: "accept", reason: "我先试着按这个方向做。" };
     });
     return JSON.stringify({
-      narration: proposedEvents.length ? "我决定了。" : "我还需要一个具体的建议。",
+      narration: proposedEvents.length ? "我先去看看。" : reply ?? "你说，我先去哪儿找？",
+      ...(!proposedEvents.length && reply && { delivery: "hesitant" as const }),
       danmakuDecisions, proposedEvents, nextStep: { kind: "stay" }, memories: [], trustDelta: 0,
     } satisfies AgentTurnOutput);
   }
@@ -101,6 +114,7 @@ export async function startReaderSession() {
     engine: startSession(pack, createNarrativeAgent(pack, sessionRegistry, providerId)),
     title: pack.manifest.title,
     character: pack.manifest.character.name,
+    hasFirstInterventionLine: Boolean(pack.manifest.firstInterventionLine),
     sceneTitles: new Map(pack.scenes.map(({ id, title }) => [id, title])),
     idle: false,
     busy: false,
@@ -144,6 +158,7 @@ export function readerView(id: string, session: ReaderSession) {
     scene: session.sceneTitles.get(state.currentSceneId),
     revision: timeline.at(-1)?.sequence ?? 0,
     mode,
+    chatReady: !session.hasFirstInterventionLine || timeline.some(entry => entry.type === "intervention_opened"),
     entries,
     eventIds,
   };

@@ -1,26 +1,177 @@
-.os { height:100dvh; position:relative; overflow:hidden; isolation:isolate; color:#ddd9b3; font:14px/1.5 Consolas,"Microsoft YaHei",monospace; background:#26332c; }
-.os-wall {position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(0deg,#0a181c22 0 1px,transparent 1px 4px),radial-gradient(ellipse at 55% 40%,#566947,#354a39 48%,#192a24 92%);}
-.wall-print {position:absolute;inset:0;display:grid;align-content:center;justify-items:center;color:#b3c39788;text-shadow:1px 2px #162a2270;}
-.wall-emblem {border:3px double currentColor;padding:18px;transform:rotate(-9deg);margin-bottom:18px;box-shadow:5px 5px #15251e55;}
-.wall-emblem svg{width:78px;height:78px}
-.wall-print b{font:600 clamp(30px,5vw,64px)/1.3 SimSun,serif;letter-spacing:.16em}.wall-print small{letter-spacing:.28em;}
-.shortcuts{position:absolute;right:12px;top:20px;display:grid;gap:12px}.shortcuts button{position:relative;width:80px;background:transparent;border:1px solid transparent;padding:6px 0;color:#f0e7bf;text-shadow:1px 2px #172016;cursor:pointer;}
-.shortcuts button:hover,.shortcuts button:focus-visible{background:#b7ce8522;border:1px dotted #d9deb0;}
-.icon-frame{position:relative;display:grid;place-items:center;width:44px;height:41px;margin:0 auto 5px;background:#c6c09b;border:3px outset #a4a182;color:#384436;box-shadow:3px 3px #17251b;}
-.icon-frame svg{width:28px;height:28px;stroke-width:1.6}.icon-frame i{position:absolute;top:-7px;right:-7px;background:#e4b467;color:#302c1d;padding:0 5px;font-style:normal;}
-.phase-frozen{cursor:wait;filter:saturate(.55)}.signal-fault{position:absolute;inset:0;z-index:10;background:repeating-linear-gradient(171deg,#506551 0 2%,#283b3a 2% 4%,#b5bd94 4% 5%,#172a2c 5% 8%);animation:tear .32s steps(2) infinite;}
-@keyframes tear{to{background-position:20px 27px;transform:scale(1.09) skewX(-4deg)}}
-.os-window{border:3px outset #979b79;background:#293629;box-shadow:5px 7px #0d181db0;display:flex;flex-direction:column;overflow:hidden;}
+.os {
+  --taskbar-height: 34px;
+  --panel: #d6d4cc;
+  --panel-light: #f7f6f0;
+  --panel-shadow: #777b7e;
+  --caption: #2d4c78;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  font: 13px/1.5 Tahoma, "Microsoft YaHei", sans-serif;
+  background: #2a5a85;
+}
+.os-wall {
+  position: absolute;
+  inset: 0 0 var(--taskbar-height);
+  z-index: -1;
+  background: #2a5a85 url("/reader/blue-desktop.png") center / cover no-repeat;
+  image-rendering: pixelated;
+}
+.desktop-brand {
+  position: absolute;
+  right: clamp(24px, 11vw, 160px);
+  bottom: 14%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #d8f0ef;
+  font: 600 clamp(15px, 2vw, 25px)/1 Tahoma, "Microsoft YaHei", sans-serif;
+  letter-spacing: .12em;
+  opacity: .84;
+}
+.desktop-brand-mark {
+  width: 32px;
+  height: 32px;
+  background: currentColor;
+  clip-path: polygon(
+    0 25%, 25% 25%, 25% 12.5%, 62.5% 12.5%, 62.5% 0, 100% 0,
+    100% 25%, 75% 25%, 75% 37.5%, 50% 37.5%, 50% 50%, 25% 50%,
+    25% 62.5%, 62.5% 62.5%, 62.5% 50%, 100% 50%, 100% 75%, 75% 75%,
+    75% 87.5%, 50% 87.5%, 50% 100%, 0 100%
+  );
+}
+.shortcuts {position:absolute;right:14px;top:16px;display:grid;gap:8px;}
+.shortcuts button {
+  position:relative;width:78px;background:transparent;border:1px solid transparent;
+  padding:5px 0;color:#fff;text-shadow:1px 1px #142d50,0 1px 3px #142d50;cursor:pointer;
+}
+.shortcuts button:hover,.shortcuts button:focus-visible {background:#183c7080;border-color:#c5d3e6;}
+.icon-frame {
+  position:relative;display:grid;place-items:center;width:36px;height:32px;margin:0 auto 4px;
+  color:#183c59;background:#c9dfea;border:2px outset #c4d5df;
+}
+.icon-frame svg {width:23px;height:23px;stroke-width:1.8;}
+.inbox-unread-badge {
+  position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;
+  display:grid;place-items:center;padding:0 3px;border:1px solid #784a16;border-radius:3px;
+  color:#2e210e;background:#ffd87e;text-shadow:none;
+  font:700 12px/1 Tahoma,"Microsoft YaHei",sans-serif;
+  animation:mail-badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes mail-badge-pulse {
+  0%,100% {background:#ffd87e;box-shadow:0 0 0 1px #ffe29b35;}
+  50% {background:#fff2bf;box-shadow:0 0 0 4px #ffd87e65,0 0 10px #ffd87e90;}
+}
+@media (prefers-reduced-motion:no-preference) {
+  .icon-frame:has(.inbox-unread-badge) {animation:mail-unread-nudge 1.6s ease-in-out infinite;}
+}
+@keyframes mail-unread-nudge {
+  0%,32%,100% {transform:translateX(0);}
+  6%,18% {transform:translateX(-2px);}
+  12%,24% {transform:translateX(2px);}
+}
+@media (prefers-reduced-motion:reduce) {
+  .inbox-unread-badge {animation:none;}
+}
+.phase-frozen{cursor:wait;filter:saturate(.55)}
+.signal-fault {position:absolute;inset:0;z-index:10;background:#102a50;}
+.signal-fault canvas {display:block;width:100%;height:100%;image-rendering:pixelated;}
+.os-window {
+  display:flex;flex-direction:column;overflow:hidden;
+  border:2px solid var(--caption);outline:1px solid #14283e;
+  background:#293629;box-shadow:inset 0 0 0 1px #7d98b9,2px 3px #142f5255;
+}
+.os-window[hidden] {display:none;}
+.os .os-window.is-maximized {
+  inset:1px 1px calc(var(--taskbar-height) + 1px);
+  width:auto;height:auto;max-height:none;
+}
 .os-monitor{position:absolute;--w:min(1120px,calc(100% - 115px));left:max(12px,calc((100% - var(--w)) / 2 - 40px));top:4dvh;width:var(--w);height:85dvh;}
-.window-bar{flex:none;display:flex;align-items:center;justify-content:space-between;background:#354739;color:#e9e3bc;border-bottom:1px solid #879473;padding:6px 10px;font-weight:bold;min-height:32px;}
-.window-bar span,.os-taskbar span,.os-taskbar div,.os-taskbar button{display:flex;align-items:center;gap:8px;}.window-bar span+span{font-size:11px;color:#c5cdab;}
+.window-bar {
+  flex:none;display:flex;align-items:center;justify-content:space-between;
+  min-height:30px;padding-left:7px;background:var(--caption);color:#f1f3f5;font-weight:600;
+}
+.window-bar > span,.window-status,.window-actions {display:flex;align-items:center;gap:5px;}
+.window-actions {gap:10px;}
+.window-status {color:#d6e1ed;font-size:11px;}
+.window-controls {display:flex;align-self:stretch;min-height:30px;gap:1px;}
+.window-controls button {
+  display:grid;place-items:center;width:34px;padding:0;color:#171b20;
+  background:var(--panel);border:1px solid var(--panel-shadow);
+  box-shadow:inset 1px 1px var(--panel-light);cursor:pointer;
+}
+.window-controls button:hover {background:#eeede5;}
+.window-controls button:active {box-shadow:inset 1px 1px var(--panel-shadow);}
+.window-controls button:focus-visible {outline:1px dotted #111;outline-offset:-4px;}
+.window-controls svg {width:13px;height:13px;stroke-width:2.5;}
 .draggable{touch-action:none;cursor:move;user-select:none;}.intercept{flex:1;min-height:0;position:relative;overflow:hidden;background:#122116;}
 .camera-image{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}.intercept:after,.reader-feed:has(.camera-image):after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#03100432 3px 4px),linear-gradient(0deg,transparent 40%,#b8dbb31a 48%,transparent 52%);background-size:auto,100% 190%;animation:scan 9s linear infinite;}
 @keyframes scan{to{background-position:0 0,0 190%;}}
 .cam-caption,.cam-location{position:absolute;left:4%;color:#dbe4b6;text-shadow:2px 2px #17281a;letter-spacing:.12em}.cam-caption{top:6%}.cam-caption b{color:#e4bb89}.cam-location{bottom:6%;font-size:18px;}
 .os-monitor .reader{height:auto;flex:1;min-height:0;padding:10px;}.os-monitor .reader-layout{gap:10px;}.reader-feed:has(.camera-image){flex:1;min-height:0;}.reader-feed .camera-image{height:100%;max-height:none;object-fit:cover;object-position:50% 88%;}
 .os .reader-story-log p{white-space:pre-line;}
-.utility{position:absolute;z-index:3;top:15%;left:clamp(12px,18vw,320px);width:min(430px,calc(100% - 40px));max-height:75dvh;color:#343c2d;background:#dbd4b7;}
-.utility-body{overflow:auto;padding:20px;}.utility h2{font:600 24px/1.6 SimSun,serif;margin:12px 0;}.utility p{margin:10px 0;}.utility small{opacity:.8;}.mail-row,.assist,.utility .window-bar button,.os-taskbar button{cursor:pointer;border:2px outset #a3a68d;padding:4px 8px;}.utility .window-bar button{padding:1px;}.mail-row{display:flex;width:100%;gap:12px;align-items:center;text-align:left;margin-top:10px;background:#c4c8a8;}.mail-row small{margin-left:auto;}.assist{background:#384b37;color:#eee4c3; margin-top:10px;}.os-taskbar{position:absolute;z-index:4;inset:auto 0 0;display:flex;justify-content:space-between;align-items:center;height:34px;padding:0 12px;border-top:2px solid #92977d;background:#465244;color:#e6e3c8;}.os-taskbar div{gap:18px;}.os-taskbar button{padding:0 8px;}
-@media(max-width:650px){.shortcuts{display:flex;right:4px;top:1px;gap:0}.shortcuts button{width:68px;padding:1px;font-size:12px}.icon-frame{height:29px;width:32px}.icon-frame svg{height:20px}.os-monitor{top:62px;left:2%;width:96%;height:calc(100dvh - 106px)}.utility{left:5%}}
-@media(prefers-reduced-motion:reduce){.signal-fault,.intercept:after,.reader-feed:has(.camera-image):after{animation:none}}
+.utility{position:absolute;z-index:3;top:15%;left:clamp(12px,18vw,320px);width:min(430px,calc(100% - 40px));max-height:75dvh;color:#1c222b;background:var(--panel);}
+.utility-body {overflow:auto;padding:16px;}
+.utility h2 {font-size:17px;line-height:1.4;margin:12px 0;}
+.utility p {margin:10px 0;}
+.utility small {color:#434b53;}
+.mail-row,.assist,.assist-decline,.os-taskbar button {cursor:pointer;border:2px outset var(--panel);padding:4px 8px;color:#161b24;background:var(--panel);}
+.mail-row {display:flex;width:100%;gap:12px;align-items:center;text-align:left;margin-top:10px;}
+.mail-status {
+  flex:0 0 9px;height:9px;margin-left:auto;border-radius:50%;
+  background:#b67b17;border:1px solid #80540e;
+}
+.mail-status.is-read {background:#439861;border-color:#28623c;}
+.assist-actions {display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:18px;}
+.assist,.assist-decline {min-width:82px;padding:6px 16px;}
+.assist {
+  background:#243f68;color:#fff;border-color:#4c6991;
+}
+.assist:hover {background:#30517d;}
+.assist:active {border-style:inset;}
+.assist:focus-visible {outline:1px dotted #fff;outline-offset:-5px;}
+.assist-decline:hover {background:#e3e7ed;}
+.connection-errors {
+  position:absolute;inset:0;z-index:5;pointer-events:none;
+}
+.connection-error {
+  position:absolute;width:min(290px,calc(100% - 34px));
+  color:#1b2736;background:#d5dbe2;
+  animation:connection-error-in .22s steps(3,end) both;
+}
+.connection-error .window-bar {padding-inline:8px;}
+.connection-error p {display:flex;gap:9px;align-items:center;margin:0;padding:12px;}
+.connection-error strong {
+  display:grid;place-items:center;flex:0 0 20px;height:20px;
+  color:#fff;background:#962f3a;border-radius:50%;
+}
+@keyframes connection-error-in {
+  from {transform:translate(-7px,3px);opacity:.35;}
+  55% {transform:translate(4px,-2px);opacity:.85;}
+  to {transform:none;opacity:1;}
+}
+@media(prefers-reduced-motion:reduce) {.connection-error {animation:none;}}
+.intercept.has-fault::before {
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 22px,#91b6e324 22px 24px,transparent 24px 47px);
+}
+@media(prefers-reduced-motion:no-preference) {
+  .intercept.has-fault::before {animation:connection-interference 2.2s steps(1,end) infinite;}
+}
+@keyframes connection-interference {
+  0%,100% {transform:none;}
+  55% {transform:translateY(8px);}
+  60% {transform:translateY(-5px);}
+  66% {transform:none;}
+}
+.os-taskbar {
+  position:absolute;z-index:4;inset:auto 0 0;display:flex;justify-content:space-between;align-items:center;
+  gap:6px;height:var(--taskbar-height);padding:3px 5px;border-top:2px solid var(--panel-light);
+  background:var(--panel);color:#222831;
+}
+.taskbar-windows,.taskbar-tray,.os-taskbar button {display:flex;align-items:center;gap:5px;}
+.os-taskbar button {min-height:25px;padding:0 6px;white-space:nowrap;}
+.taskbar-tray {padding:0 5px;border:1px inset var(--panel);min-height:25px;white-space:nowrap;}
+@media(max-width:650px){.shortcuts{display:flex;right:4px;top:1px;gap:0}.shortcuts button{width:68px;padding:1px;font-size:12px}.icon-frame{height:29px;width:32px}.icon-frame svg{height:20px}.os-monitor{top:62px;left:2%;width:96%;height:calc(100dvh - 106px)}.utility{left:5%}.window-status{display:none}.window-controls button{width:30px}.os-taskbar button{gap:3px;padding-inline:3px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){.intercept:after,.reader-feed:has(.camera-image):after{animation:none}}
