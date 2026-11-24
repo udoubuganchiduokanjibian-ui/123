@@ -51,7 +51,10 @@ export function StoryPreview({ onComplete, onExit }: { onComplete?: () => void; 
     busy.current = true;
     setPending(true);
     setFailure(undefined);
-    if (command.action === "danmaku") setOutgoing(command.text);
+    if (command.action === "danmaku") {
+      setOutgoing(command.text);
+      setText(draft => draft.trim() === command.text ? "" : draft);
+    }
     let expired = false;
     try {
       const response = await fetch("/api/reader", {
@@ -70,8 +73,8 @@ export function StoryPreview({ onComplete, onExit }: { onComplete?: () => void; 
         setSpokenThrough(0);
       }
       setFrame(current => ({ view: next, previous: current?.view.id === next.id ? current.view : undefined }));
-      if (command.action === "danmaku") setText("");
     } catch (error) {
+      if (command.action === "danmaku") setText(draft => draft || command.text);
       setFailure({
         command,
         message: error instanceof TypeError ? "阅读器暂时无法连接，请重试。" : (error as Error).message,
@@ -175,10 +178,9 @@ export function StoryPreview({ onComplete, onExit }: { onComplete?: () => void; 
               <form className={`reader-form${channelOpen ? " is-open" : ""}`} onSubmit={submit}>
                 <input
                   aria-label="弹幕"
-                  disabled={!inputReady || view?.mode === "completed" || view?.mode === "no_action" || !!failure}
+                  disabled={view?.mode === "completed" || view?.mode === "no_action"}
                   maxLength={500}
                   onChange={(event) => setText(event.target.value)}
-                  readOnly={pending}
                   placeholder={typedHint}
                   value={text}
                 />

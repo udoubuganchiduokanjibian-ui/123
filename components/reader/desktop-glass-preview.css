@@ -41,7 +41,6 @@
     60% 0, 45% 9%, 32% 20%, 21% 32%, 12% 45%, 5% 60%, 0 75%);
 }
 
-.os-glass-preview .desktop-brand { display: none; }
 .os-glass-preview .shortcuts { right: 12px; top: 20px; gap: 12px; }
 .os-glass-preview .shortcuts button {
   width: 80px;
@@ -138,9 +137,27 @@
   box-shadow: 0 4px 12px #122a45a0;
 }
 .desktop-volume input {
+  appearance: none;
   flex: 1;
   min-width: 0;
-  accent-color: #bfe8ff;
+  height: 7px;
+  border-radius: 999px;
+  background: #fff;
+}
+.desktop-volume input::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #bfe8ff;
+  box-shadow: 0 0 0 1px #5789ad;
+}
+.desktop-volume input::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 1px solid #5789ad;
+  border-radius: 50%;
+  background: #bfe8ff;
 }
 .desktop-volume input:focus-visible { outline: 1px solid #d6f0ff; outline-offset: 3px; }
 .desktop-volume output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }

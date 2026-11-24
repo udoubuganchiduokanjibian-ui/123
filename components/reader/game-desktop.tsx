@@ -15,16 +15,6 @@ type App = "inbox" | "files" | "system" | "browser" | "monitor" | "note";
 type Phase = "desktop" | "frozen" | "fault" | "online";
 const frozenDuration = 780;
 const faultDuration = 640;
-const errorPlacements: CSSProperties[] = [
-  { right: "12%", bottom: "13%" },
-  { right: "8%", bottom: "10%" },
-  { right: -52, bottom: "9%" },
-  { left: -44, bottom: "14%" },
-  { right: "4%", bottom: -25 },
-  { right: -68, top: "21%" },
-  { left: "8%", top: -18 },
-  { right: "3%", bottom: "17%" },
-];
 type WindowPosition = { left: number; top: number };
 type WindowId = App | "terminal";
 type DesktopWindow = { id: WindowId; minimized?: boolean; maximized?: boolean; position?: WindowPosition };
@@ -227,19 +217,16 @@ function BrowserPage({ openingNews, openedOn, active }: { openingNews: boolean; 
   </div>;
 }
 
-export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }) {
+export function GameDesktop() {
   const [phase, setPhase] = useState<Phase>("desktop");
   const [openedOn, setOpenedOn] = useState<Date>();
-  const [windows, setWindows] = useState<DesktopWindow[]>(glassPreview ? [{ id: "browser" }] : []);
-  const [read, setRead] = useState(false);
+  const [windows, setWindows] = useState<DesktopWindow[]>([{ id: "browser" }]);
   const [intro, setIntro] = useState<"locked" | "mail" | "accepted" | "unlocked">("locked");
   const [selectedMail, setSelectedMail] = useState<NightMailId>();
   const [readNightMail, setReadNightMail] = useState<NightMailId[]>([]);
   const [alarming, setAlarming] = useState(false);
   const [showTimeNotice, setShowTimeNotice] = useState(false);
-  const [refusalCount, setRefusalCount] = useState(0);
   const stopMailChime = useRef<(() => void) | undefined>(undefined);
-  const openMonitorAfterFault = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishStory = useCallback(() => setFinished(true), []);
@@ -248,15 +235,12 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     update: (position: WindowPosition) => void;
   } | null>(null);
   const clock = useShiftClock();
-  const nightDesktop = glassPreview && phase === "online";
-  const monitorReady = phase === "online" && (!glassPreview || intro === "unlocked");
-  const unreadCount = phase !== "online" ? 0 : glassPreview
-    ? (intro === "locked" ? 0 : newNightMail.filter(id => !readNightMail.includes(id)).length)
-    : Number(!read);
+  const nightDesktop = phase === "online";
+  const monitorReady = nightDesktop && intro === "unlocked";
+  const unreadCount = nightDesktop && intro !== "locked"
+    ? newNightMail.filter(id => !readNightMail.includes(id)).length : 0;
   const shiftDate = nightDesktop && openedOn ? newsDateFormat.format(previousWeek(openedOn)) : undefined;
-  const openingNews = glassPreview && phase === "desktop";
-  const showMonitorShortcut = nightDesktop
-    || (openingNews && !windows.some(window => window.id === "browser" && !window.minimized));
+  const openingNews = phase === "desktop";
   const terminal = windows.find(window => window.id === "terminal");
   const foreground = windows.findLast(window => !window.minimized)?.id;
   const waitingForAnswer = intro === "mail" && readNightMail.includes("stranger");
@@ -271,12 +255,12 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     ...(!window.maximized && window.position),
     zIndex: 2 + windows.findIndex(item => item.id === id),
   });
-  const desktopStatus = phase === "frozen" || refusalCount > 0 ? "程序未响应"
+  const desktopStatus = phase === "frozen" ? "程序未响应"
     : phase === "fault" ? "信号中断" : undefined;
 
   useEffect(() => {
-    if (glassPreview) setOpenedOn(new Date());
-  }, [glassPreview]);
+    setOpenedOn(new Date());
+  }, []);
 
   useEffect(() => () => stopMailChime.current?.(), []);
 
@@ -322,20 +306,10 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
 
   useEffect(() => {
     if (phase !== "frozen" && phase !== "fault") return;
-    const timer = setTimeout(() => {
-      if (phase === "frozen") {
-        setPhase("fault");
-      } else {
-        setPhase("online");
-        if (openMonitorAfterFault.current) {
-          openMonitorAfterFault.current = false;
-          focusWindow("monitor");
-          requestNightMail();
-        } else if (!glassPreview) focusWindow("terminal");
-      }
-    }, phase === "frozen" ? frozenDuration : faultDuration);
+    const timer = setTimeout(() => setPhase(phase === "frozen" ? "fault" : "online"),
+      phase === "frozen" ? frozenDuration : faultDuration);
     return () => clearTimeout(timer);
-  }, [phase, glassPreview, focusWindow, requestNightMail]);
+  }, [phase]);
 
   // Sound starts with the first click anywhere, as browsers require.
   useEffect(initAudio, []);
@@ -347,15 +321,13 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   }, []);
 
   function launch(id: App) {
-    if (phase === "desktop" && (glassPreview || id !== "browser")) {
-      if (openingNews) dismissWindow("browser");
-      openMonitorAfterFault.current = glassPreview && id === "monitor";
-      if (!glassPreview) stopMailChime.current = playMailArrival(frozenDuration + faultDuration);
+    if (openingNews) {
+      dismissWindow("browser");
       setPhase("frozen");
       return;
     }
-    if (phase !== "online" && !(phase === "desktop" && id === "browser")) return;
-    if (nightDesktop && id === "monitor") requestNightMail();
+    if (!nightDesktop) return;
+    if (id === "monitor") requestNightMail();
     focusWindow(id === "monitor" && monitorReady ? "terminal" : id);
   }
   function selectNightMail(id: NightMailId) {
@@ -378,15 +350,8 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
     dismissWindow("monitor");
     focusWindow("terminal");
   }
-  function readMail() {
-    stopMailChime.current?.();
-    stopMailChime.current = undefined;
-    setRead(true);
-  }
   function connectMonitor() {
-    setRefusalCount(0);
     setPlaying(true);
-    if (!glassPreview) dismissWindow("inbox");
     focusWindow("terminal");
   }
   function startDrag(e: PointerEvent<HTMLElement>, id: WindowId) {
@@ -408,14 +373,10 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
   function endDrag(e: PointerEvent<HTMLElement>) {
     if (drag.current?.pointerId === e.pointerId) drag.current = null;
   }
-  return <div className={`os phase-${phase}${glassPreview ? " os-glass-preview" : ""}`}>
+  return <div className={`os phase-${phase} os-glass-preview`}>
     <div className="os-wall" aria-hidden="true">
-      {glassPreview && <div className="desktop-ribbons" />}
+      <div className="desktop-ribbons" />
       {nightDesktop && <div className="night-wall-label">爱生生物有限公司内部电脑</div>}
-      <div className="desktop-brand">
-        <span className="desktop-brand-mark" />
-        <span>岚序电脑</span>
-      </div>
     </div>
     <nav className="shortcuts" aria-label="桌面软件">{apps.map(({id,title,Icon}) => {
       const unread = id === "inbox" && unreadCount > 0;
@@ -428,7 +389,7 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
       </button>;
     })}</nav>
     {phase === "fault" && <SignalSnow />}
-    {showMonitorShortcut && <button type="button" className="night-monitor-shortcut" onClick={() => launch("monitor")}>
+    {nightDesktop && <button type="button" className="night-monitor-shortcut" onClick={() => launch("monitor")}>
       <span className="icon-frame"><Camera aria-hidden="true" /></span>监控
     </button>}
     {monitorReady && <section className={"os-monitor os-window" + (terminal?.maximized ? " is-maximized" : "")}
@@ -446,27 +407,16 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
             onClose={() => dismissWindow("terminal")} />
         </div>
       </header>
-      {playing ? <StoryPreview onComplete={finishStory} onExit={nightDesktop ? () => dismissWindow("terminal") : undefined}/> : <div className={`intercept${refusalCount ? " has-fault" : ""}`}>
-        <CameraFeed sceneId="s00" whitePinAtEntrance={nightDesktop}/>
+      {playing ? <StoryPreview onComplete={finishStory} onExit={() => dismissWindow("terminal")}/> : <div className="intercept">
+        <CameraFeed sceneId="s00" whitePinAtEntrance/>
         <div className="reader-feed-top reader-meta">
-          {nightDesktop && <button type="button" className="camera-exit" onClick={() => dismissWindow("terminal")}>退出</button>}
+          <button type="button" className="camera-exit" onClick={() => dismissWindow("terminal")}>退出</button>
           <div className="reader-feed-identity"><span>CAM / 00</span><CameraRecording /></div>
         </div>
         <div className="cam-location">研究中心正门</div>
-        {nightDesktop && <button type="button" className="assist night-enter-story" onClick={connectMonitor}>进入中控</button>}
+        <button type="button" className="assist night-enter-story" onClick={connectMonitor}>进入中控</button>
       </div>}
     </section>}
-    {refusalCount > 0 && <div className="connection-errors">
-      <span className="sr-only" role="status">协助连接故障，累计拒绝 {refusalCount} 次。</span>
-      {Array.from({ length: Math.min(refusalCount, 8) }, (_, index) => {
-        const attempt = refusalCount - Math.min(refusalCount, 8) + index + 1;
-        return <div key={attempt} className="os-window connection-error"
-          style={errorPlacements[(attempt - 1) % errorPlacements.length]} aria-hidden="true">
-          <header className="window-bar"><span>系统错误</span><span>#{String(attempt).padStart(2, "0")}</span></header>
-          <p><strong aria-hidden="true">!</strong> 协助请求被拒绝，连接异常。</p>
-        </div>;
-      })}
-    </div>}
     {utilityIds.map(app => {
       const window = windows.find(item => item.id === app);
       if (!window) return null;
@@ -491,35 +441,20 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
         onSelect={selectNightMail} onAccept={acceptNightMail} onRefuse={() => setAlarming(true)} />
       : nightDesktop && app === "note" ? <DutyNote />
       : nightDesktop && app === "files" && !finished ? <DutyFiles onOpenNote={() => launch("note")} />
-      : <div className="utility-body">{app === "inbox" ? <>
-        <small>系统邮局　/　收件箱</small>
-        <button className="mail-row" onClick={readMail}>
-          <Mail size={20}/><strong>强制协助通知</strong>
-          <span className={`mail-status${read ? " is-read" : ""}`} role="img"
-            aria-label={read ? "已读" : "未读"} title={read ? "已读" : "未读"} />
-        </button>
-        {read && <article><small>发件人　系统管理员</small><h2>强制协助通知</h2><p>监控通道已绑定本机。你必须协助曲别针完成今晚的调查。</p><p>留意监控中的现场记录。在他需要判断时，通过弹幕把你的建议发给他。任务期间，监控连接将保持开启。</p>
-          <div className="assist-actions">
-            {!playing && <button type="button" className="assist-decline"
-              onClick={() => setRefusalCount(count => count + 1)}>拒绝</button>}
-            <button type="button" className="assist" onClick={connectMonitor}>
-              {playing ? "返回监控" : "接受并接入"}
-            </button>
-          </div></article>}
-      </> : app === "files" ? <><small>本地磁盘　/　工作目录</small><h2>我的文件</h2>{finished ? <ul>{["完整叙事文本", "人物与世界设定", "故事分析", "弹幕交互设计"].map(name =>
+      : <div className="utility-body">{app === "files" ? <><small>本地磁盘　/　工作目录</small><h2>我的文件</h2>{finished ? <ul>{["完整叙事文本", "人物与世界设定", "故事分析", "弹幕交互设计"].map(name =>
           <li key={name}><a href={`/story-archive/${name}.txt`} download>{name} ↓</a></li>)}</ul> : <p>调查结束后，本次任务的剧本档案将在这里开放。</p>}</> :
         <><small>终端系统　/　设备状态</small><h2>本机信息</h2><p>工作模式　夜班值守</p><p>监控通道　已连接</p><p>关闭权限　由系统管理</p></>}</div>}
       </section>;
     })}
     <footer className="os-taskbar">
-      {glassPreview && <div className="taskbar-launchers">
+      <div className="taskbar-launchers">
         <span aria-hidden="true" className="taskbar-static taskbar-computer" title="电脑"><Monitor size={17}/></span>
         <span aria-hidden="true" className="taskbar-static"><Search size={14}/></span>
         <span aria-hidden="true" className="taskbar-static" title="文件资源管理器"><FolderClosed size={16}/></span>
         <button type="button" className="taskbar-static taskbar-browser taskbar-action" aria-label="打开浏览器" title="浏览器"
           disabled={phase === "frozen" || phase === "fault"} onClick={() => launch("browser")}><Globe size={16}/></button>
         <span aria-hidden="true" className="taskbar-static" title="计算器"><Calculator size={16}/></span>
-      </div>}
+      </div>
       <div className="taskbar-windows">
         {windows.map(window => <button type="button" key={window.id}
           aria-pressed={foreground === window.id} onClick={() => focusWindow(window.id)}>
@@ -527,10 +462,10 @@ export function GameDesktop({ glassPreview = false }: { glassPreview?: boolean }
         </button>)}
       </div>
       <div className="taskbar-tray">
-        {glassPreview && <DesktopVolume />}
+        <DesktopVolume />
         {phase === "online" && <button className="taskbar-action" onClick={() => launch("inbox")}><Mail size={15}/> {unreadCount ? unreadCount + " 封未读" : "收件箱"}</button>}
         {desktopStatus && <span>{desktopStatus}</span>}
-        {glassPreview ? <DesktopClock shiftTime={nightDesktop ? clock : undefined} shiftDate={shiftDate} /> : !desktopStatus && <span>{clock}</span>}
+        <DesktopClock shiftTime={nightDesktop ? clock : undefined} shiftDate={shiftDate} />
       </div>
     </footer>
     {alarming && <RefusalAlarm onAccept={acceptNightMail} />}
